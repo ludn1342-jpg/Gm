@@ -110,7 +110,7 @@ async function consultarZonaPagos(documento, placa) {
       timeout: 30000
     });
 
-    // Espera corta de seguridad (800ms en lugar de 2000ms)
+    // Espera nativa (NO page.waitForTimeout)
     await new Promise(r => setTimeout(r, 800));
 
     console.log('[API] PASO 2: Esperando formulario...');
@@ -138,7 +138,7 @@ async function consultarZonaPagos(documento, placa) {
       ]);
     }
 
-    // Espera corta para que la tabla aparezca
+    // Espera nativa (NO page.waitForTimeout)
     await new Promise(r => setTimeout(r, 800));
 
     console.log('[API] PASO 6: Extrayendo datos con tabla...');
