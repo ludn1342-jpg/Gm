@@ -24,71 +24,85 @@
         }
 
         .top-bar { height: 6px; background-color: var(--gm-blue); width: 100%; }
-        .header { padding: 20px 30px; display: flex; align-items: center; }
-        .header img { height: 45px; object-fit: contain; }
+        .header { padding: 15px 20px; display: flex; align-items: center; }
+        .header img { height: 35px; object-fit: contain; }
+        @media (min-width: 768px) { .header img { height: 45px; } }
 
         .main-content {
-            flex: 1; display: flex; flex-direction: column; align-items: center; padding: 40px 20px;
+            flex: 1; display: flex; flex-direction: column; align-items: center; padding: 30px 15px;
         }
 
         .titulo-pago {
-            font-size: 18px; font-weight: 400; color: #333; text-align: center; margin-bottom: 40px; line-height: 1.4;
+            font-size: 16px; font-weight: 400; color: #333; text-align: center; margin-bottom: 25px; line-height: 1.4; padding: 0 10px;
         }
+        @media (min-width: 768px) { .titulo-pago { font-size: 18px; margin-bottom: 40px; } }
 
         .card-pago {
             background-color: var(--gm-gray-light); border: 1px solid #e0e0e0; border-radius: 4px;
-            padding: 35px 30px; width: 100%; max-width: 650px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            padding: 25px 20px; width: 100%; max-width: 650px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
+        @media (min-width: 768px) { .card-pago { padding: 35px 30px; } }
 
         .form-group { margin-bottom: 15px; position: relative; display: flex; }
 
         .input-icon {
-            width: 50px; background-color: #e6e6e6; border: 1px solid var(--gm-gray-border); border-right: none;
+            width: 45px; background-color: #e6e6e6; border: 1px solid var(--gm-gray-border); border-right: none;
             border-radius: 4px 0 0 4px; display: flex; align-items: center; justify-content: center; color: #666;
+            flex-shrink: 0;
         }
 
         .input-field {
-            flex: 1; padding: 15px; border: 1px solid var(--gm-gray-border); border-left: none; border-right: none;
-            font-size: 15px; outline: none; font-family: inherit; background-color: #ffffff; color: #333;
+            flex: 1; padding: 12px 10px; border: 1px solid var(--gm-gray-border); border-left: none; border-right: none;
+            font-size: 14px; outline: none; font-family: inherit; background-color: #ffffff; color: #333;
+            width: 100%; min-width: 0;
         }
+        @media (min-width: 768px) { .input-field { padding: 15px; font-size: 15px; } }
         .input-field::placeholder { color: #999; }
 
         .input-help {
-            width: 50px; background-color: #ffffff; border: 1px solid var(--gm-gray-border); border-left: none;
-            border-radius: 0 4px 4px 0; display: flex; align-items: center; justify-content: center; color: #666; font-size: 20px; font-weight: bold;
+            width: 45px; background-color: #ffffff; border: 1px solid var(--gm-gray-border); border-left: none;
+            border-radius: 0 4px 4px 0; display: flex; align-items: center; justify-content: center; color: #666; 
+            font-size: 18px; font-weight: bold; flex-shrink: 0;
         }
+        @media (min-width: 768px) { .input-help { width: 50px; font-size: 20px; } }
 
         .btn-continuar {
-            width: 100%; padding: 15px; background-color: var(--gm-blue); color: white; border: none; border-radius: 4px;
-            font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 10px; transition: background 0.2s;
+            width: 100%; padding: 14px; background-color: var(--gm-blue); color: white; border: none; border-radius: 4px;
+            font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; transition: background 0.2s;
         }
+        @media (min-width: 768px) { .btn-continuar { padding: 15px; font-size: 18px; } }
         .btn-continuar:hover:not(:disabled) { background-color: #0036cc; }
         .btn-continuar:disabled { background-color: #88aaff; cursor: not-allowed; }
 
-        .alert { padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; display: none; text-align: center; }
+        .alert { padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; display: none; text-align: center; }
         .alert.error { background: #fce8e6; color: #c5221f; border: 1px solid #f5c6cb; }
         .alert.show { display: block; }
 
         .footer {
-            background-color: #000000; color: #ffffff; padding: 30px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;
+            background-color: #000000; color: #ffffff; padding: 20px; 
+            display: flex; flex-direction: column; align-items: flex-start; gap: 20px;
         }
-        .footer-left { display: flex; align-items: center; gap: 20px; }
-        .sello-vigilado {
-            border: 1px solid #fff; padding: 5px 2px; font-size: 9px; text-align: center;
-            writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 1px; height: 80px; display: flex; justify-content: center;
+        @media (min-width: 768px) { 
+            .footer { padding: 30px 40px; flex-direction: row; justify-content: space-between; align-items: center; } 
         }
-        .footer-logo-container { display: flex; flex-direction: column; align-items: flex-start; }
-        .footer-logo { height: 35px; filter: brightness(0) invert(1); object-fit: contain; }
-        .footer-logo-text { font-size: 10px; color: #cccccc; margin-top: 5px; line-height: 1.2; }
-        .footer-right { text-align: right; font-size: 13px; color: #aaaaaa; line-height: 1.6; }
-        .footer-right strong { color: #00c98d; font-weight: 600; }
 
-        @media (max-width: 768px) {
-            .footer { flex-direction: column; align-items: flex-start; padding: 20px; }
-            .footer-right { text-align: left; }
-            .card-pago { padding: 20px; }
-            .titulo-pago { font-size: 16px; margin-bottom: 20px; }
+        .footer-left { display: flex; align-items: center; gap: 15px; }
+        .sello-vigilado {
+            border: 1px solid #fff; padding: 5px 2px; font-size: 8px; text-align: center;
+            writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 1px; height: 70px; display: flex; justify-content: center;
         }
+        @media (min-width: 768px) { .sello-vigilado { font-size: 9px; height: 80px; } }
+
+        .footer-logo-container { display: flex; flex-direction: column; align-items: flex-start; }
+        .footer-logo { height: 30px; filter: brightness(0) invert(1); object-fit: contain; }
+        @media (min-width: 768px) { .footer-logo { height: 35px; } }
+        
+        .footer-logo-text { font-size: 9px; color: #cccccc; margin-top: 5px; line-height: 1.2; }
+        @media (min-width: 768px) { .footer-logo-text { font-size: 10px; } }
+
+        .footer-right { text-align: left; font-size: 11px; color: #aaaaaa; line-height: 1.6; }
+        @media (min-width: 768px) { .footer-right { text-align: right; font-size: 13px; } }
+        .footer-right strong { color: #00c98d; font-weight: 600; }
 
         .spinner {
             display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4);
@@ -115,17 +129,17 @@
         <form id="consultaForm">
             <div class="form-group">
                 <div class="input-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                 </div>
-                <input type="text" id="documento" name="documento" class="input-field" required placeholder="Documento de identidad (Para NIT, no incluir dígito de verificación)">
+                <input type="text" id="documento" name="documento" class="input-field" required placeholder="Documento de identidad (Para NIT, no incluir dígito)">
                 <div class="input-help">?</div>
             </div>
 
             <div class="form-group">
                 <div class="input-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
                 </div>
-                <input type="text" id="placa" name="placa" class="input-field" required placeholder="Ingresa la placa del vehículo financiado (Sin espacios)" style="text-transform: uppercase;">
+                <input type="text" id="placa" name="placa" class="input-field" required placeholder="Ingresa la placa del vehículo (Sin espacios)" style="text-transform: uppercase;">
                 <div class="input-help">?</div>
             </div>
 
@@ -169,7 +183,6 @@
         alertBox.className = 'alert';
 
         try {
-            // Petición a tu API (Puppeteer)
             const response = await fetch('/api/consultar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -182,9 +195,7 @@
                 const factura = data.facturas[0];
                 const totalNumerico = factura.valorSugerido.replace(/[^0-9]/g, '');
                 
-                // ─── AQUÍ SE ENVÍAN LOS DATOS A INDEX2 ───
                 const urlPago = `/index2.html?documento=${encodeURIComponent(doc)}&placa=${encodeURIComponent(placa)}&total=${totalNumerico}&credito=${encodeURIComponent(factura.numeroCredito)}`;
-                
                 window.location.href = urlPago;
             } else {
                 throw new Error(data.error || 'No se encontraron facturas para este documento y placa.');
