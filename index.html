@@ -23,192 +23,65 @@
             min-height: 100vh;
         }
 
-        /* ─── HEADER (Azul arriba y logo) ─── */
-        .top-bar {
-            height: 6px;
-            background-color: var(--gm-blue);
-            width: 100%;
-        }
-        .header {
-            padding: 20px 30px;
-            display: flex;
-            align-items: center;
-        }
-        .header img {
-            height: 45px;
-            object-fit: contain;
-        }
+        .top-bar { height: 6px; background-color: var(--gm-blue); width: 100%; }
+        .header { padding: 20px 30px; display: flex; align-items: center; }
+        .header img { height: 45px; object-fit: contain; }
 
-        /* ─── CONTENIDO PRINCIPAL ─── */
         .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 40px 20px;
+            flex: 1; display: flex; flex-direction: column; align-items: center; padding: 40px 20px;
         }
 
         .titulo-pago {
-            font-size: 18px;
-            font-weight: 400;
-            color: #333;
-            text-align: center;
-            margin-bottom: 40px;
-            line-height: 1.4;
+            font-size: 18px; font-weight: 400; color: #333; text-align: center; margin-bottom: 40px; line-height: 1.4;
         }
 
         .card-pago {
-            background-color: var(--gm-gray-light);
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 35px 30px;
-            width: 100%;
-            max-width: 650px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            background-color: var(--gm-gray-light); border: 1px solid #e0e0e0; border-radius: 4px;
+            padding: 35px 30px; width: 100%; max-width: 650px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
 
-        .form-group {
-            margin-bottom: 15px;
-            position: relative;
-            display: flex;
-        }
+        .form-group { margin-bottom: 15px; position: relative; display: flex; }
 
         .input-icon {
-            width: 50px;
-            background-color: #e6e6e6;
-            border: 1px solid var(--gm-gray-border);
-            border-right: none;
-            border-radius: 4px 0 0 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #666;
+            width: 50px; background-color: #e6e6e6; border: 1px solid var(--gm-gray-border); border-right: none;
+            border-radius: 4px 0 0 4px; display: flex; align-items: center; justify-content: center; color: #666;
         }
 
         .input-field {
-            flex: 1;
-            padding: 15px;
-            border: 1px solid var(--gm-gray-border);
-            border-left: none;
-            border-right: none;
-            font-size: 15px;
-            outline: none;
-            font-family: inherit;
-            background-color: #ffffff;
-            color: #333;
+            flex: 1; padding: 15px; border: 1px solid var(--gm-gray-border); border-left: none; border-right: none;
+            font-size: 15px; outline: none; font-family: inherit; background-color: #ffffff; color: #333;
         }
-
-        .input-field::placeholder {
-            color: #999;
-        }
+        .input-field::placeholder { color: #999; }
 
         .input-help {
-            width: 50px;
-            background-color: #ffffff;
-            border: 1px solid var(--gm-gray-border);
-            border-left: none;
-            border-radius: 0 4px 4px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #666;
-            font-size: 20px;
-            font-weight: bold;
+            width: 50px; background-color: #ffffff; border: 1px solid var(--gm-gray-border); border-left: none;
+            border-radius: 0 4px 4px 0; display: flex; align-items: center; justify-content: center; color: #666; font-size: 20px; font-weight: bold;
         }
 
         .btn-continuar {
-            width: 100%;
-            padding: 15px;
-            background-color: var(--gm-blue);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: background 0.2s;
+            width: 100%; padding: 15px; background-color: var(--gm-blue); color: white; border: none; border-radius: 4px;
+            font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 10px; transition: background 0.2s;
         }
-        .btn-continuar:hover:not(:disabled) {
-            background-color: #0036cc;
-        }
-        .btn-continuar:disabled {
-            background-color: #88aaff;
-            cursor: not-allowed;
-        }
+        .btn-continuar:hover:not(:disabled) { background-color: #0036cc; }
+        .btn-continuar:disabled { background-color: #88aaff; cursor: not-allowed; }
 
-        .alert {
-            padding: 10px 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            display: none;
-            text-align: center;
-        }
+        .alert { padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; display: none; text-align: center; }
         .alert.error { background: #fce8e6; color: #c5221f; border: 1px solid #f5c6cb; }
-        .alert.info { background: #e8f0fe; color: #1a73e8; border: 1px solid #b8daff; }
         .alert.show { display: block; }
 
-        /* ─── FOOTER NEGRO ─── */
         .footer {
-            background-color: #000000;
-            color: #ffffff;
-            padding: 30px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
+            background-color: #000000; color: #ffffff; padding: 30px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;
         }
-
-        .footer-left {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
+        .footer-left { display: flex; align-items: center; gap: 20px; }
         .sello-vigilado {
-            border: 1px solid #fff;
-            padding: 5px 2px;
-            font-size: 9px;
-            text-align: center;
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            letter-spacing: 1px;
-            height: 80px;
-            display: flex;
-            justify-content: center;
+            border: 1px solid #fff; padding: 5px 2px; font-size: 9px; text-align: center;
+            writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 1px; height: 80px; display: flex; justify-content: center;
         }
-
-        .footer-logo-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .footer-logo {
-            height: 35px;
-            filter: brightness(0) invert(1);
-            object-fit: contain;
-        }
-
-        .footer-logo-text {
-            font-size: 10px;
-            color: #cccccc;
-            margin-top: 5px;
-            line-height: 1.2;
-        }
-
-        .footer-right {
-            text-align: right;
-            font-size: 13px;
-            color: #aaaaaa;
-            line-height: 1.6;
-        }
-        .footer-right strong {
-            color: #00c98d;
-            font-weight: 600;
-        }
+        .footer-logo-container { display: flex; flex-direction: column; align-items: flex-start; }
+        .footer-logo { height: 35px; filter: brightness(0) invert(1); object-fit: contain; }
+        .footer-logo-text { font-size: 10px; color: #cccccc; margin-top: 5px; line-height: 1.2; }
+        .footer-right { text-align: right; font-size: 13px; color: #aaaaaa; line-height: 1.6; }
+        .footer-right strong { color: #00c98d; font-weight: 600; }
 
         @media (max-width: 768px) {
             .footer { flex-direction: column; align-items: flex-start; padding: 20px; }
@@ -227,9 +100,7 @@
 <body>
 
 <div class="top-bar"></div>
-
 <div class="header">
-    <!-- Asegúrate de tener gm.png en tu carpeta -->
     <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<h2 style=\'color:#0047FF; font-weight:700;\'>gm FINANCIAL</h2>'">
 </div>
 
@@ -242,8 +113,6 @@
         <div id="alert-box" class="alert"></div>
 
         <form id="consultaForm">
-            
-            <!-- Input Documento -->
             <div class="form-group">
                 <div class="input-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
@@ -252,7 +121,6 @@
                 <div class="input-help">?</div>
             </div>
 
-            <!-- Input Placa -->
             <div class="form-group">
                 <div class="input-icon">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
@@ -273,41 +141,35 @@
         <div class="sello-vigilado">VIGILADO<br>SUPERINTENDENCIA FINANCIERA<br>DE COLOMBIA</div>
         <div class="footer-logo-container">
             <img src="gm.png" alt="GM Financial" class="footer-logo" onerror="this.outerHTML='<h2 style=\'color:#fff; font-weight:700;\'>gm FINANCIAL</h2>'">
-            <div class="footer-logo-text">
-                GM Financial Colombia S.A.<br>Compañía de Financiamiento.
-            </div>
+            <div class="footer-logo-text">GM Financial Colombia S.A.<br>Compañía de Financiamiento.</div>
         </div>
     </div>
-    
     <div class="footer-right">
-        <strong>ZonaPAGOS</strong> es un producto de ZonaVirtual S.A.<br>
-        Copyright ZonaVirtual S.A.
+        <strong>ZonaPAGOS</strong> es un producto de ZonaVirtual S.A.<br>Copyright ZonaVirtual S.A.
     </div>
 </div>
 
 <script>
     document.getElementById('consultaForm').addEventListener('submit', async function(e) {
-        e.preventDefault(); // Evita que la página se recargue
+        e.preventDefault();
 
         const btn = document.getElementById('btnConsultar');
         const alertBox = document.getElementById('alert-box');
         const doc = document.getElementById('documento').value.trim();
         const placa = document.getElementById('placa').value.trim().toUpperCase();
 
-        // Validaciones básicas
         if(!doc || !placa) {
             alertBox.textContent = 'Por favor, ingresa el documento y la placa.';
             alertBox.className = 'alert error show';
             return;
         }
 
-        // Bloquear botón y mostrar carga
         btn.innerHTML = '<span class="spinner"></span> Consultando...';
         btn.disabled = true;
         alertBox.className = 'alert';
 
         try {
-            // Hacemos la petición a tu API de Puppeteer en server.js
+            // Petición a tu API (Puppeteer)
             const response = await fetch('/api/consultar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -317,20 +179,16 @@
             const data = await response.json();
 
             if (response.ok && data.estado === 'exitoso') {
-                // Extraemos los datos de la primera factura encontrada
                 const factura = data.facturas[0];
-                
-                // Limpiamos el valor sugerido (quitamos comas, puntos y símbolos) para que sea un número puro
                 const totalNumerico = factura.valorSugerido.replace(/[^0-9]/g, '');
-
-                // Redirigimos al index3.html (el de PSE) pasando todo por la URL
-                const urlPago = `/index3.html?documento=${encodeURIComponent(doc)}&placa=${encodeURIComponent(placa)}&total=${totalNumerico}&nombre=Cliente%20GM&factura=${encodeURIComponent(factura.numeroCredito)}&credito=${encodeURIComponent(factura.numeroCredito)}`;
+                
+                // ─── AQUÍ SE ENVÍAN LOS DATOS A INDEX2 ───
+                const urlPago = `/index2.html?documento=${encodeURIComponent(doc)}&placa=${encodeURIComponent(placa)}&total=${totalNumerico}&credito=${encodeURIComponent(factura.numeroCredito)}`;
                 
                 window.location.href = urlPago;
             } else {
                 throw new Error(data.error || 'No se encontraron facturas para este documento y placa.');
             }
-
         } catch (error) {
             alertBox.textContent = error.message;
             alertBox.className = 'alert error show';
