@@ -76,65 +76,69 @@ function returnBrowserToPool(b) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// ============= CONSULTA ZONA PAGOS (OPTIMIZADA) ================
+// ═══════════════════════════════════════════════════════════════
 async function consultarZonaPagos(documento, placa) {
   activeConsultations++;
   let browserInstance = null;
+  const t0 = Date.now();
 
   try {
-    console.log(`[API] Consultando (${activeConsultations} activas) - Documento: ${documento}, Placa: ${placa}`);
+    console.log(`[API] Consultando rápido - Doc: ${documento}, Placa: ${placa}`);
 
     browserInstance = await getBrowserFromPool();
     const page = await browserInstance.newPage();
 
+    // 1. Bloquear imágenes, css y fuentes para máxima velocidad
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const type = req.resourceType();
+      if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
     await page.setViewport({ width: 1280, height: 800 });
 
-    console.log('[API] PASO 1: Navegando a PreLoginPage...');
+    console.log('[API] PASO 1: Cargando PreLogin...');
     await page.goto('https://zonapagos.com/NV_PagosN3/Views/preLogin/PreLoginPage.aspx?ico=33968', {
-      waitUntil: 'networkidle2',
-      timeout: 30000
+      waitUntil: 'domcontentloaded',
+      timeout: 15000
     });
 
-    // Usar setTimeout nativo en lugar de page.waitForTimeout
-    await new Promise(r => setTimeout(r, 2000));
-
-    console.log('[API] PASO 2: Esperando formulario...');
-    await page.waitForSelector('input', { timeout: 15000 });
-    await new Promise(r => setTimeout(r, 1000));
-
-    console.log('[API] PASO 3: Llenando documento...');
+    console.log('[API] PASO 2: Llenando formulario...');
+    await page.waitForSelector('input[type="text"]', { timeout: 8000 });
+    
     const inputs = await page.$$('input[type="text"]');
     if (inputs.length >= 1) {
-      await inputs[0].click();
-      await inputs[0].type(documento, { delay: 30 });
+      await inputs[0].type(documento, { delay: 10 }); // Tipeo rápido
     }
-
-    console.log('[API] PASO 4: Llenando placa...');
     if (inputs.length >= 2) {
-      await inputs[1].click();
-      await inputs[1].type(placa, { delay: 30 });
+      await inputs[1].type(placa, { delay: 10 });
     }
 
-    console.log('[API] PASO 5: Haciendo click en Continuar...');
+    console.log('[API] PASO 3: Haciendo click en Continuar...');
     const btn = await page.$('button[type="submit"], input[type="submit"]');
     if (btn) {
-      // Usar Promise.all para evitar el error "Execution context was destroyed"
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
-          console.log('[API] ⚠️ La navegación tardó más de lo esperado, continuando...');
-        }),
+        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {}),
         btn.click()
       ]);
     }
 
-    // Espera adicional para asegurar que la tabla se renderice
-    await new Promise(r => setTimeout(r, 3000));
+    console.log('[API] PASO 4: Esperando la tabla de resultados...');
+    await page.waitForSelector('table tr td', { timeout: 5000 }).catch(() => {
+      console.log('[API] ⚠️ Tabla no detectada rápido, intentando extraer igual...');
+    });
 
-    console.log('[API] PASO 6: Extrayendo datos con tabla...');
+    console.log('[API] PASO 5: Extrayendo datos...');
     const datosExtraidos = await page.evaluate(() => {
       const datos = [];
       const tablas = document.querySelectorAll('table');
-
       for (let tabla of tablas) {
         const rows = tabla.querySelectorAll('tr');
         for (let row of rows) {
@@ -152,24 +156,24 @@ async function consultarZonaPagos(documento, placa) {
           }
         }
       }
-
       return datos;
     });
 
-    console.log('[API] Datos extraídos:', datosExtraidos);
     await page.close();
+    const tiempoTotal = ((Date.now() - t0) / 1000).toFixed(2);
 
     if (datosExtraidos.length > 0) {
-      console.log('[API] ✅ Consulta exitosa');
+      console.log(`[API] ✅ Consulta exitosa en ${tiempoTotal} segundos`);
       return {
         estado: 'exitoso',
         documento: documento,
         placa: placa,
         facturas: datosExtraidos,
+        tiempoMs: Date.now() - t0,
         timestamp: new Date().toISOString()
       };
     } else {
-      console.log('[API] ⚠️ No se encontraron facturas');
+      console.log(`[API] ⚠️ No se encontraron facturas (${tiempoTotal}s)`);
       return {
         error: 'No se encontraron facturas',
         estado: 'no_encontrado',
@@ -190,15 +194,13 @@ async function consultarZonaPagos(documento, placa) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ═══════════ NUEVO: RAPPIPAY PSE (integración de pago) ═════════
+// ============= RAPPIPAY PSE ====================================
 // ═══════════════════════════════════════════════════════════════
-
 const RAPPIPAY_API = 'https://services.prod-k8s.rappipay.com/integration/pse/api';
 const RAPPIPAY_LINK_CODE = 'KAnsiZ';
 const FIREBASE_API_KEY = 'AIzaSyBXJ_5dpN6uTDr41m72dcS_ZKJtGc_dVHw';
 const FIREBASE_DB_URL = 'https://rpp-platform-mobile-app-prod-default-rtdb.firebaseio.com';
 
-// ─── HTTPS GET helper ──────────────────────────────────────
 function httpsGet(urlStr, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const url = new URL(urlStr);
@@ -222,7 +224,6 @@ function httpsGet(urlStr, extraHeaders = {}) {
   });
 }
 
-// ─── HTTPS POST helper ────────────────────────────────────
 function httpsPost(urlStr, data, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const url = new URL(urlStr);
@@ -253,7 +254,6 @@ function httpsPost(urlStr, data, extraHeaders = {}) {
   });
 }
 
-// ─── RUTA: Obtener Bancos PSE ───
 app.get('/pse/bancos', async (req, res) => {
   try {
     const linkData = await httpsGet(
@@ -269,18 +269,16 @@ app.get('/pse/bancos', async (req, res) => {
   }
 });
 
-// ─── RUTA: Crear Pago PSE ───
 app.post('/pse/pagar', async (req, res) => {
   const { bank_code, bank_name, document_type, document_number, amount } = req.body;
 
   if (!bank_code || !document_number || !amount) {
-    return res.status(400).json({ ok: false, error: 'Faltan campos requeridos (bank_code, document_number, amount)' });
+    return res.status(400).json({ ok: false, error: 'Faltan campos requeridos' });
   }
 
   try {
     console.log(`[pse] Pago: banco=${bank_code}, doc=${document_number}, monto=${amount}`);
 
-    // 1) Obtener link
     const linkData = await httpsGet(
       `${RAPPIPAY_API}/transfer-link/code/${RAPPIPAY_LINK_CODE}`,
       { 'traceability-id': crypto.randomUUID() }
@@ -300,10 +298,8 @@ app.post('/pse/pagar', async (req, res) => {
       });
     }
 
-    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
-      || req.socket.remoteAddress || '127.0.0.1';
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '127.0.0.1';
 
-    // 2) Crear payment URL
     const paymentPayload = {
       traceability_id,
       bank_code,
@@ -314,22 +310,17 @@ app.post('/pse/pagar', async (req, res) => {
       user_agreement_check: true,
       client_ip: clientIp,
     };
-    const headerTraceId = crypto.randomUUID();
-    console.log('[pse] POST /payment-url payload:', JSON.stringify(paymentPayload));
 
     const paymentResp = await httpsPost(
       `${RAPPIPAY_API}/payment-url`,
       paymentPayload,
-      { 'traceability-id': headerTraceId }
+      { 'traceability-id': crypto.randomUUID() }
     );
-    console.log('[pse] payment-url response:', JSON.stringify(paymentResp).substring(0, 500));
 
     const firebaseToken = paymentResp.token || paymentResp.custom_token || paymentResp.firebase_token;
-    const directUrl = paymentResp.bank_url || paymentResp.url
-      || paymentResp.redirect_url || paymentResp.payment_url;
+    const directUrl = paymentResp.bank_url || paymentResp.url || paymentResp.redirect_url || paymentResp.payment_url;
 
     if (directUrl) {
-      console.log('[pse] URL directa del banco recibida ✓');
       return res.json({ ok: true, bank_url: directUrl, traceability_id });
     }
 
@@ -339,7 +330,6 @@ app.post('/pse/pagar', async (req, res) => {
 
     const txTraceId = paymentResp.traceability_id || traceability_id;
 
-    // 3) Firebase auth
     const firebaseAuth = await httpsPost(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${FIREBASE_API_KEY}`,
       { token: firebaseToken, returnSecureToken: true }
@@ -349,9 +339,6 @@ app.post('/pse/pagar', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'Error autenticación Firebase' });
     }
 
-    console.log('[pse] Firebase auth OK');
-
-    // 4) Polling Firebase por URL del banco
     const firebasePath = `cash_flow_cash_in_pse_link_transaction/${txTraceId}.json?auth=${firebaseAuth.idToken}`;
     let bankUrl = null;
 
@@ -359,11 +346,10 @@ app.post('/pse/pagar', async (req, res) => {
       await new Promise(r => setTimeout(r, i === 0 ? 3000 : 2000));
       try {
         const fbData = await httpsGet(`${FIREBASE_DB_URL}/${firebasePath}`);
-        console.log(`[pse] Firebase poll ${i + 1}/15:`, JSON.stringify(fbData)?.substring(0, 400));
         const link = fbData?.data?.params?.link || fbData?.params?.link || fbData?.link;
         if (link) { bankUrl = link; break; }
       } catch (fbErr) {
-        console.error(`[pse] Firebase poll ${i + 1} error:`, fbErr.message);
+        console.error(`[pse] Firebase poll error:`, fbErr.message);
       }
     }
 
@@ -380,7 +366,7 @@ app.post('/pse/pagar', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// ============= RUTAS GM ORIGINALES =============================
+// ============= RUTAS PRINCIPALES ===============================
 // ═══════════════════════════════════════════════════════════════
 
 app.post('/api/consultar', async (req, res) => {
@@ -388,10 +374,7 @@ app.post('/api/consultar', async (req, res) => {
     const { documento, placa } = req.body;
 
     if (!documento || !placa) {
-      return res.status(400).json({
-        error: 'Documento y placa son requeridos',
-        estado: 'error'
-      });
+      return res.status(400).json({ error: 'Documento y placa son requeridos', estado: 'error' });
     }
 
     const resultado = await consultarZonaPagos(documento, placa);
@@ -404,10 +387,7 @@ app.post('/api/consultar', async (req, res) => {
 
   } catch (error) {
     console.error('[API ERROR]', error.message);
-    res.status(500).json({
-      error: 'Error al consultar: ' + error.message,
-      estado: 'error'
-    });
+    res.status(500).json({ error: 'Error al consultar: ' + error.message, estado: 'error' });
   }
 });
 
@@ -435,7 +415,6 @@ async function start() {
       console.log(`🔗 POST http://localhost:${PORT}/api/consultar`);
       console.log(`🔗 GET  http://localhost:${PORT}/pse/bancos`);
       console.log(`🔗 POST http://localhost:${PORT}/pse/pagar`);
-      console.log(`📍 Pool: ${POOL_SIZE} navegadores, máx ${MAX_PAGES} consultas`);
     });
   } catch (error) {
     console.error('Error al iniciar:', error);
