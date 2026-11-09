@@ -77,68 +77,65 @@ function returnBrowserToPool(b) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ============= CONSULTA ZONA PAGOS (OPTIMIZADA) ================
+// ============= CONSULTA ZONA PAGOS (ESTABLE) ===================
 // ═══════════════════════════════════════════════════════════════
 async function consultarZonaPagos(documento, placa) {
   activeConsultations++;
   let browserInstance = null;
-  const t0 = Date.now();
 
   try {
-    console.log(`[API] Consultando rápido - Doc: ${documento}, Placa: ${placa}`);
+    console.log(`[API] Consultando (${activeConsultations} activas) - Documento: ${documento}, Placa: ${placa}`);
 
     browserInstance = await getBrowserFromPool();
     const page = await browserInstance.newPage();
 
-    // 1. Bloquear imágenes, css y fuentes para máxima velocidad
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      const type = req.resourceType();
-      if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
-        req.abort();
-      } else {
-        req.continue();
-      }
-    });
-
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
     await page.setViewport({ width: 1280, height: 800 });
 
-    console.log('[API] PASO 1: Cargando PreLogin...');
+    console.log('[API] PASO 1: Navegando a PreLoginPage...');
     await page.goto('https://zonapagos.com/NV_PagosN3/Views/preLogin/PreLoginPage.aspx?ico=33968', {
-      waitUntil: 'domcontentloaded',
-      timeout: 15000
+      waitUntil: 'networkidle2',
+      timeout: 30000
     });
 
-    console.log('[API] PASO 2: Llenando formulario...');
-    await page.waitForSelector('input[type="text"]', { timeout: 8000 });
-    
+    // Usamos setTimeout nativo (Puppeteer v25 ya no tiene page.waitForTimeout)
+    await new Promise(r => setTimeout(r, 2000));
+
+    console.log('[API] PASO 2: Esperando formulario...');
+    await page.waitForSelector('input', { timeout: 15000 });
+    await new Promise(r => setTimeout(r, 1000));
+
+    console.log('[API] PASO 3: Llenando documento...');
     const inputs = await page.$$('input[type="text"]');
     if (inputs.length >= 1) {
-      await inputs[0].type(documento, { delay: 10 }); // Tipeo rápido
-    }
-    if (inputs.length >= 2) {
-      await inputs[1].type(placa, { delay: 10 });
+      await inputs[0].click();
+      await inputs[0].type(documento, { delay: 30 });
     }
 
-    console.log('[API] PASO 3: Haciendo click en Continuar...');
+    console.log('[API] PASO 4: Llenando placa...');
+    if (inputs.length >= 2) {
+      await inputs[1].click();
+      await inputs[1].type(placa, { delay: 30 });
+    }
+
+    console.log('[API] PASO 5: Haciendo click en Continuar...');
     const btn = await page.$('button[type="submit"], input[type="submit"]');
     if (btn) {
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {}),
+        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
+          console.log('[API] ⚠️ La navegación tardó más de lo esperado, continuando...');
+        }),
         btn.click()
       ]);
     }
 
-    console.log('[API] PASO 4: Esperando la tabla de resultados...');
-    await page.waitForSelector('table tr td', { timeout: 5000 }).catch(() => {
-      console.log('[API] ⚠️ Tabla no detectada rápido, intentando extraer igual...');
-    });
+    await new Promise(r => setTimeout(r, 2000));
 
-    console.log('[API] PASO 5: Extrayendo datos...');
+    console.log('[API] PASO 6: Extrayendo datos con tabla...');
     const datosExtraidos = await page.evaluate(() => {
       const datos = [];
       const tablas = document.querySelectorAll('table');
+
       for (let tabla of tablas) {
         const rows = tabla.querySelectorAll('tr');
         for (let row of rows) {
@@ -156,24 +153,24 @@ async function consultarZonaPagos(documento, placa) {
           }
         }
       }
+
       return datos;
     });
 
+    console.log('[API] Datos extraídos:', datosExtraidos);
     await page.close();
-    const tiempoTotal = ((Date.now() - t0) / 1000).toFixed(2);
 
     if (datosExtraidos.length > 0) {
-      console.log(`[API] ✅ Consulta exitosa en ${tiempoTotal} segundos`);
+      console.log('[API] ✅ Consulta exitosa');
       return {
         estado: 'exitoso',
         documento: documento,
         placa: placa,
         facturas: datosExtraidos,
-        tiempoMs: Date.now() - t0,
         timestamp: new Date().toISOString()
       };
     } else {
-      console.log(`[API] ⚠️ No se encontraron facturas (${tiempoTotal}s)`);
+      console.log('[API] ⚠️ No se encontraron facturas');
       return {
         error: 'No se encontraron facturas',
         estado: 'no_encontrado',
