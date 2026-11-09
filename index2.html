@@ -19,218 +19,115 @@
 
         /* ─── NAVBAR ─── */
         .navbar {
-            background: #0047FF; /* Azul GM */
-            border-radius: 0;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            border: none;
-            padding: 10px 0;
-            margin-bottom: 0;
+            background: #0047FF; border-radius: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: none; padding: 10px 0; margin-bottom: 0;
         }
-
-        .navbar-brand {
-            padding: 5px 15px;
-            height: auto;
-        }
-
-        .navbar-brand img {
-            height: 40px;
-            object-fit: contain;
-            filter: brightness(0) invert(1); 
-        }
-        
-        .navbar-nav > li > a {
-            color: white !important;
-            font-size: 15px;
-            margin-top: 10px;
-        }
+        .navbar-brand { padding: 5px 15px; height: auto; }
+        .navbar-brand img { height: 30px; object-fit: contain; filter: brightness(0) invert(1); }
+        @media (min-width: 768px) { .navbar-brand img { height: 40px; } }
+        .navbar-nav > li > a { color: white !important; font-size: 15px; margin-top: 5px; }
 
         /* ─── CONTENIDO ─── */
         .container-main {
-            flex: 1;
-            max-width: 900px;
-            margin-top: 30px;
-            margin-bottom: 40px;
+            flex: 1; max-width: 900px; margin-top: 20px; margin-bottom: 40px; padding: 0 15px;
         }
 
         .summary-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 25px;
+            display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px;
         }
+        @media (min-width: 600px) { .summary-cards { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
 
         .summary-card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            border-left: 4px solid #0047FF;
+            background: white; padding: 15px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); border-left: 4px solid #0047FF;
         }
-
-        .summary-card h4 {
-            font-size: 12px;
-            color: #888;
-            margin: 0 0 10px 0;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .summary-card .amount {
-            font-size: 24px;
-            color: #333;
-            font-weight: 700;
-        }
+        .summary-card h4 { font-size: 11px; color: #888; margin: 0 0 5px 0; font-weight: 600; text-transform: uppercase; }
+        .summary-card .amount { font-size: 20px; color: #333; font-weight: 700; }
+        @media (min-width: 768px) { .summary-card { padding: 20px; } .summary-card .amount { font-size: 24px; } }
 
         .header-section {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 25px;
+            background: white; padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); margin-bottom: 20px;
         }
+        @media (min-width: 768px) { .header-section { padding: 25px; } }
 
-        .header-section h2 {
-            color: #333;
-            margin: 0 0 15px 0;
-            font-weight: 700;
-            font-size: 20px;
-        }
+        .header-section h2 { color: #333; margin: 0 0 10px 0; font-weight: 700; font-size: 18px; }
+        @media (min-width: 768px) { .header-section h2 { font-size: 20px; } }
 
         .table-container {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
+            background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
         }
 
-        .table {
-            margin: 0;
-            font-size: 14px;
-        }
+        .table { margin: 0; font-size: 13px; min-width: 500px; }
+        @media (min-width: 768px) { .table { font-size: 14px; min-width: 100%; } }
 
-        .table thead {
-            background: #f8f9fa;
-            border-bottom: 2px solid #0047FF;
-        }
+        .table thead { background: #f8f9fa; border-bottom: 2px solid #0047FF; }
+        .table thead th { color: #333; font-weight: 600; border: none; padding: 12px 15px; white-space: nowrap; }
+        .table tbody td { padding: 12px 15px; vertical-align: middle; border-color: #eee; font-size: 14px; }
 
-        .table thead th {
-            color: #333;
-            font-weight: 600;
-            border: none;
-            padding: 15px;
-        }
-
-        .table tbody td {
-            padding: 15px;
-            vertical-align: middle;
-            border-color: #eee;
-            font-size: 15px;
-        }
-
-        /* ─── BOTÓN PSE ─── */
+        /* ─── BOTÓN PSE (CON CÍRCULO PERFECTO) ─── */
         .btn-pay {
-            background: #0047FF;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            font-size: 18px;
-            font-weight: 600;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.2s;
-            width: 100%;
-            margin-top: 20px;
+            background: #0047FF; color: white; border: none; padding: 12px 20px; font-size: 16px;
+            font-weight: 600; border-radius: 4px; cursor: pointer; transition: background 0.2s;
+            width: 100%; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        @media (min-width: 768px) { .btn-pay { font-size: 18px; gap: 15px; } }
+        .btn-pay:hover { background: #0036cc; }
+        
+        /* El contenedor que hace el círculo blanco perfecto */
+        .pse-circle {
+            background-color: #ffffff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%; /* Círculo perfecto */
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
-        }
-
-        .btn-pay:hover {
-            background: #0036cc;
-        }
-
-        .btn-pay img {
-            height: 30px;
-            object-fit: contain;
-            background-color: white;
-            padding: 2px 5px;
-            border-radius: 3px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
         
-        .valor-destacado {
-            font-size: 22px;
-            font-weight: 700;
-            color: #0047FF;
+        @media (min-width: 768px) { 
+            .pse-circle { width: 38px; height: 38px; }
         }
+
+        /* La imagen dentro del círculo */
+        .pse-circle img {
+            width: 70%; /* Ajusta el tamaño del logo dentro del círculo */
+            height: 70%;
+            object-fit: contain;
+        }
+
+        .valor-destacado { font-size: 18px; font-weight: 700; color: #0047FF; }
+        @media (min-width: 768px) { .valor-destacado { font-size: 22px; } }
 
         /* ─── FOOTER NEGRO ─── */
         .footer {
-            background-color: #000000;
-            color: #ffffff;
-            padding: 30px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-            width: 100%;
+            background-color: #000000; color: #ffffff; padding: 20px;
+            display: flex; flex-direction: column; align-items: flex-start; gap: 20px; width: 100%;
+        }
+        @media (min-width: 768px) { 
+            .footer { padding: 30px 40px; flex-direction: row; justify-content: space-between; align-items: center; } 
         }
 
-        .footer-left {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
+        .footer-left { display: flex; align-items: center; gap: 15px; }
         .sello-vigilado {
-            border: 1px solid #fff;
-            padding: 5px 2px;
-            font-size: 9px;
-            text-align: center;
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            letter-spacing: 1px;
-            height: 80px;
-            display: flex;
-            justify-content: center;
+            border: 1px solid #fff; padding: 5px 2px; font-size: 8px; text-align: center;
+            writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 1px; height: 70px; display: flex; justify-content: center;
         }
+        @media (min-width: 768px) { .sello-vigilado { font-size: 9px; height: 80px; } }
 
-        .footer-logo-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
+        .footer-logo-container { display: flex; flex-direction: column; align-items: flex-start; }
+        .footer-logo { height: 30px; filter: brightness(0) invert(1); object-fit: contain; }
+        @media (min-width: 768px) { .footer-logo { height: 35px; } }
+        
+        .footer-logo-text { font-size: 9px; color: #cccccc; margin-top: 5px; line-height: 1.2; }
+        @media (min-width: 768px) { .footer-logo-text { font-size: 10px; } }
 
-        .footer-logo {
-            height: 35px;
-            filter: brightness(0) invert(1);
-            object-fit: contain;
-        }
-
-        .footer-logo-text {
-            font-size: 10px;
-            color: #cccccc;
-            margin-top: 5px;
-            line-height: 1.2;
-        }
-
-        .footer-right {
-            text-align: right;
-            font-size: 13px;
-            color: #aaaaaa;
-            line-height: 1.6;
-        }
-
-        .footer-right strong {
-            color: #00c98d;
-            font-weight: 600;
-        }
-
-        @media (max-width: 768px) {
-            .footer { flex-direction: column; align-items: flex-start; padding: 20px; }
-            .footer-right { text-align: left; }
-        }
+        .footer-right { text-align: left; font-size: 11px; color: #aaaaaa; line-height: 1.6; }
+        @media (min-width: 768px) { .footer-right { text-align: right; font-size: 13px; } }
+        .footer-right strong { color: #00c98d; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -238,7 +135,7 @@
         <div class="container-fluid">
             <div class="navbar-header">
                 <a class="navbar-brand" href="#">
-                    <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<span style=\'color:white; font-weight:700; font-size:20px;\'>gm FINANCIAL</span>'">
+                    <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<span style=\'color:white; font-weight:700; font-size:18px;\'>gm FINANCIAL</span>'">
                 </a>
             </div>
             <ul class="nav navbar-nav navbar-right">
@@ -252,11 +149,11 @@
         <div class="summary-cards">
             <div class="summary-card">
                 <h4>Documento</h4>
-                <div class="amount" id="lbl-documento" style="font-size: 18px;">-</div>
+                <div class="amount" id="lbl-documento" style="font-size: 16px;">-</div>
             </div>
             <div class="summary-card">
                 <h4>Placa</h4>
-                <div class="amount" id="lbl-placa" style="font-size: 18px;">-</div>
+                <div class="amount" id="lbl-placa" style="font-size: 16px;">-</div>
             </div>
             <div class="summary-card" style="border-left-color: #00c98d;">
                 <h4>Total a Pagar</h4>
@@ -266,7 +163,7 @@
 
         <div class="header-section">
             <h2>Detalle de tu crédito</h2>
-            <p style="color: #666; margin-bottom: 20px;">A continuación encuentras la factura generada para tu vehículo.</p>
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">A continuación encuentras la factura generada para tu vehículo.</p>
             
             <div class="table-container">
                 <table class="table">
@@ -287,34 +184,32 @@
                 </table>
             </div>
             
+            <!-- Botón con el círculo perfecto -->
             <button class="btn-pay" id="btnIrAPagar">
-                <img src="pse.png" alt="PSE" onerror="this.style.display='none'">
+                <div class="pse-circle">
+                    <img src="pse.png" alt="PSE" onerror="this.style.display='none'">
+                </div>
                 Pagar con PSE
             </button>
         </div>
 
     </div>
 
-    <!-- FOOTER NEGRO CON LOGO GM -->
+    <!-- FOOTER NEGRO -->
     <div class="footer">
         <div class="footer-left">
             <div class="sello-vigilado">VIGILADO<br>SUPERINTENDENCIA FINANCIERA<br>DE COLOMBIA</div>
             <div class="footer-logo-container">
                 <img src="gm.png" alt="GM Financial" class="footer-logo" onerror="this.outerHTML='<h2 style=\'color:#fff; font-weight:700;\'>gm FINANCIAL</h2>'">
-                <div class="footer-logo-text">
-                    GM Financial Colombia S.A.<br>Compañía de Financiamiento.
-                </div>
+                <div class="footer-logo-text">GM Financial Colombia S.A.<br>Compañía de Financiamiento.</div>
             </div>
         </div>
-        
         <div class="footer-right">
-            <strong>ZonaPAGOS</strong> es un producto de ZonaVirtual S.A.<br>
-            Copyright ZonaVirtual S.A.
+            <strong>ZonaPAGOS</strong> es un producto de ZonaVirtual S.A.<br>Copyright ZonaVirtual S.A.
         </div>
     </div>
 
     <script>
-        // 1. Recibir los datos que envía el index.html
         const params = new URLSearchParams(window.location.search);
         const doc = params.get('documento') || '';
         const placa = params.get('placa') || '';
@@ -324,7 +219,6 @@
         const totalNum = Number(totalStr);
         const totalFormateado = '$' + totalNum.toLocaleString('es-CO');
 
-        // 2. Pintar los datos reales en la pantalla
         document.getElementById('lbl-documento').textContent = doc;
         document.getElementById('lbl-placa').textContent = placa;
         document.getElementById('lbl-total').textContent = totalFormateado;
@@ -333,7 +227,6 @@
         document.getElementById('lbl-placa-tabla').textContent = placa;
         document.getElementById('lbl-valor-tabla').textContent = totalFormateado;
 
-        // 3. Al darle "Pagar", enviar los datos al formulario PSE (index3.html)
         document.getElementById('btnIrAPagar').addEventListener('click', function() {
             const urlPse = `/index3.html?documento=${encodeURIComponent(doc)}&placa=${encodeURIComponent(placa)}&total=${totalNum}&credito=${encodeURIComponent(credito)}`;
             window.location.href = urlPse;
