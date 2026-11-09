@@ -95,7 +95,7 @@ async function consultarZonaPagos(documento, placa) {
       timeout: 30000
     });
 
-    // Reemplazo de page.waitForTimeout por setTimeout nativo
+    // Usar setTimeout nativo en lugar de page.waitForTimeout
     await new Promise(r => setTimeout(r, 2000));
 
     console.log('[API] PASO 2: Esperando formulario...');
@@ -118,13 +118,17 @@ async function consultarZonaPagos(documento, placa) {
     console.log('[API] PASO 5: Haciendo click en Continuar...');
     const btn = await page.$('button[type="submit"], input[type="submit"]');
     if (btn) {
-      await Promise.race([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {}),
+      // Usar Promise.all para evitar el error "Execution context was destroyed"
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
+          console.log('[API] ⚠️ La navegación tardó más de lo esperado, continuando...');
+        }),
         btn.click()
       ]);
     }
 
-    await new Promise(r => setTimeout(r, 2000));
+    // Espera adicional para asegurar que la tabla se renderice
+    await new Promise(r => setTimeout(r, 3000));
 
     console.log('[API] PASO 6: Extrayendo datos con tabla...');
     const datosExtraidos = await page.evaluate(() => {
