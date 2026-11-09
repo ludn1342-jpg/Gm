@@ -18,8 +18,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // ═══════════════════════════════════════════════════════════════
-// ============= POOL DE NAVEGADORES Y COLA DE CONCURRENCIA =============
-// ============= (SECCIÓN GM ORIGINAL — INTACTA) =================
+// ============= POOL DE NAVEGADORES (GM) ========================
 // ═══════════════════════════════════════════════════════════════
 let browserPool = [];
 const MAX_PAGES = 5;
@@ -96,11 +95,12 @@ async function consultarZonaPagos(documento, placa) {
       timeout: 30000
     });
 
-    await page.waitForTimeout(2000);
+    // Reemplazo de page.waitForTimeout por setTimeout nativo
+    await new Promise(r => setTimeout(r, 2000));
 
     console.log('[API] PASO 2: Esperando formulario...');
     await page.waitForSelector('input', { timeout: 15000 });
-    await page.waitForTimeout(1000);
+    await new Promise(r => setTimeout(r, 1000));
 
     console.log('[API] PASO 3: Llenando documento...');
     const inputs = await page.$$('input[type="text"]');
@@ -124,7 +124,7 @@ async function consultarZonaPagos(documento, placa) {
       ]);
     }
 
-    await page.waitForTimeout(2000);
+    await new Promise(r => setTimeout(r, 2000));
 
     console.log('[API] PASO 6: Extrayendo datos con tabla...');
     const datosExtraidos = await page.evaluate(() => {
@@ -249,11 +249,7 @@ function httpsPost(urlStr, data, extraHeaders = {}) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ENDPOINTS PSE
-// ═══════════════════════════════════════════════════════════════
-
-// ─── GET /pse/bancos ───
+// ─── RUTA: Obtener Bancos PSE ───
 app.get('/pse/bancos', async (req, res) => {
   try {
     const linkData = await httpsGet(
@@ -269,7 +265,7 @@ app.get('/pse/bancos', async (req, res) => {
   }
 });
 
-// ─── POST /pse/pagar ───
+// ─── RUTA: Crear Pago PSE ───
 app.post('/pse/pagar', async (req, res) => {
   const { bank_code, bank_name, document_type, document_number, amount } = req.body;
 
@@ -380,7 +376,7 @@ app.post('/pse/pagar', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// ============= RUTAS GM ORIGINALES (INTACTAS) ==================
+// ============= RUTAS GM ORIGINALES =============================
 // ═══════════════════════════════════════════════════════════════
 
 app.post('/api/consultar', async (req, res) => {
