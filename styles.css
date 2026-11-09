@@ -1,0 +1,289 @@
+/* GM Financial - ZonaPAGOS Styles */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.line-top-header {
+  height: 4px;
+  background: linear-gradient(90deg, #003399 0%, #0055cc 50%, #003399 100%);
+}
+
+.image-right-div {
+  height: 80px;
+  background: linear-gradient(90deg, #003399 0%, #0055cc 100%);
+}
+
+/* Logo Header */
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+/* Main Content */
+#Login_InicioLogin_UpLogin {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.container-form {
+  margin: 0 auto;
+  max-width: 600px;
+}
+
+.tabs-login {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.tabs-login > span {
+  display: block;
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 30px;
+  line-height: 1.4;
+}
+
+.content-form-gmac {
+  width: 100%;
+}
+
+/* Form Groups */
+.form-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  transition: border-color 0.3s;
+}
+
+.input-group:focus-within {
+  border-color: #0055cc;
+  box-shadow: 0 0 0 3px rgba(0, 85, 204, 0.1);
+}
+
+.input-group-addon {
+  padding: 12px 15px;
+  background: #f8f9fa;
+  border-right: 1px solid #ddd;
+  color: #666;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+}
+
+.input-group-addon.addon-material {
+  cursor: pointer;
+  padding: 12px 12px;
+}
+
+.input-group-addon.addon-material:hover {
+  background: #e9ecef;
+}
+
+.material-symbols-outlined {
+  font-size: 20px;
+  font-weight: 300;
+}
+
+.form-control {
+  flex: 1;
+  padding: 12px 15px !important;
+  border: none !important;
+  font-size: 14px;
+  color: #333;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.form-control::placeholder {
+  color: #999;
+}
+
+.form-control:focus {
+  outline: none;
+}
+
+.error-message {
+  display: none;
+  color: #d32f2f;
+  font-size: 12px;
+  margin-top: 6px;
+  display: block;
+}
+
+/* Buttons */
+.btn {
+  padding: 14px 20px !important;
+  font-size: 16px !important;
+  font-weight: 600;
+  border: none !important;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-lg {
+  padding: 16px 24px !important;
+  font-size: 16px !important;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+#Login_InicioLogin_BtnContinuarMod9 {
+  background: linear-gradient(90deg, #0055cc 0%, #003399 100%);
+  color: white;
+  margin-top: 10px;
+}
+
+#Login_InicioLogin_BtnContinuarMod9:hover {
+  background: linear-gradient(90deg, #004299 0%, #002580 100%);
+  box-shadow: 0 6px 20px rgba(0, 85, 204, 0.3);
+  transform: translateY(-2px);
+}
+
+#Login_InicioLogin_BtnContinuarMod9:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(0, 85, 204, 0.2);
+}
+
+/* Footer */
+#PieDePagina_DivPieDePagina {
+  background: white;
+  padding: 30px 20px;
+  text-align: center;
+  border-top: 1px solid #eee;
+}
+
+.footer-gmac {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.vigilado {
+  height: 60px;
+  width: auto;
+}
+
+.content-footer {
+  flex: 1;
+  text-align: center;
+  min-width: 300px;
+}
+
+.content-logo-gm {
+  margin-bottom: 15px;
+}
+
+.logo-gmac {
+  height: 50px;
+  width: auto;
+}
+
+.text-zona {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.6;
+}
+
+.text-zona strong {
+  color: #003399;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tabs-login {
+    padding: 25px;
+  }
+
+  .tabs-login > span {
+    font-size: 16px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+  }
+
+  .footer-gmac {
+    flex-direction: column;
+    gap: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tabs-login {
+    padding: 15px;
+  }
+
+  .input-group-addon {
+    padding: 10px 12px;
+  }
+
+  .form-control {
+    padding: 10px 12px !important;
+  }
+
+  .btn-lg {
+    padding: 14px 16px !important;
+    min-height: 45px;
+    font-size: 14px !important;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tabs-login {
+  animation: fadeIn 0.5s ease-out;
+}
