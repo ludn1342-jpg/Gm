@@ -20,60 +20,110 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // ═══════════════════════════════════════════════════════════════
 // ============= POOL DE NAVEGADORES (GM) ========================
 // ═══════════════════════════════════════════════════════════════
+const PRELOGIN_URL = 'https://zonapagos.com/NV_PagosN3/Views/preLogin/PreLoginPage.aspx?ico=33968';
+
+const CHROME_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-blink-features=AutomationControlled',
+  '--disable-background-timer-throttling',
+  '--disable-renderer-backgrounding',
+  '--disable-backgrounding-occluded-windows',
+  '--no-first-run',
+  '--no-default-browser-check',
+  '--disable-extensions'
+];
+
 let browserPool = [];
+let pagePool = [];           // páginas ya posicionadas en PreLoginPage (solo ZonaPagos)
 const MAX_PAGES = 5;
 const POOL_SIZE = 3;
+const WARM_PAGES = 2;        // cuántas páginas pre-calentadas mantener
 let activeConsultations = 0;
 const consultationQueue = [];
+
+// Configura una page con interceptación de requests + UA + viewport
+async function setupPage(page) {
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    const t = req.resourceType();
+    if (['image', 'stylesheet', 'font', 'media', 'other', 'ping', 'manifest'].includes(t)) {
+      req.abort();
+    } else {
+      req.continue();
+    }
+  });
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+  await page.setViewport({ width: 1280, height: 800 });
+  return page;
+}
+
+// Crea una page nueva ya navegada al PreLoginPage y con el form listo
+async function warmPage(browser) {
+  const page = await browser.newPage();
+  await setupPage(page);
+  await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  await page.waitForSelector('input[type="text"]', { timeout: 10000 });
+  return page;
+}
 
 async function initializeBrowserPool() {
   console.log('[POOL] Inicializando pool de navegadores...');
   for (let i = 0; i < Math.min(POOL_SIZE, 1); i++) {
-    const b = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-blink-features=AutomationControlled'
-      ]
-    });
+    const b = await puppeteer.launch({ headless: 'new', args: CHROME_ARGS });
     browserPool.push(b);
   }
-  console.log(`[POOL] Pool iniciado con ${browserPool.length} navegador(es)`);
+  // Pre-calentar páginas (solo si hay browser disponible)
+  if (browserPool.length > 0) {
+    for (let i = 0; i < WARM_PAGES; i++) {
+      try {
+        pagePool.push(await warmPage(browserPool[0]));
+      } catch (e) {
+        console.error('[POOL] warmPage error:', e.message);
+      }
+    }
+  }
+  console.log(`[POOL] Pool iniciado: ${browserPool.length} navegador(es), ${pagePool.length} página(s) pre-calentada(s)`);
 }
 
 async function getBrowserFromPool() {
-  if (browserPool.length > 0) {
-    return browserPool.pop();
-  }
+  if (browserPool.length > 0) return browserPool.pop();
 
   if (activeConsultations < MAX_PAGES) {
-    return await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-blink-features=AutomationControlled'
-      ]
-    });
+    return await puppeteer.launch({ headless: 'new', args: CHROME_ARGS });
   }
 
-  return new Promise((resolve) => {
-    consultationQueue.push(resolve);
-  });
+  return new Promise((resolve) => consultationQueue.push(resolve));
 }
 
 function returnBrowserToPool(b) {
-  if (browserPool.length < POOL_SIZE) {
-    browserPool.push(b);
-  }
+  if (browserPool.length < POOL_SIZE) browserPool.push(b);
 
   if (consultationQueue.length > 0) {
     const resolve = consultationQueue.shift();
     resolve(b);
   }
+}
+
+// Toma una page lista (pre-calentada) o crea una nueva
+async function acquirePage(browserInstance) {
+  if (pagePool.length > 0) return pagePool.pop();
+  return await warmPage(browserInstance);
+}
+
+// Recalienta una page en background para la siguiente consulta
+function replenishPagePool(browserInstance) {
+  if (pagePool.length >= WARM_PAGES) return;
+  if (!browserInstance) return;
+  setImmediate(async () => {
+    try {
+      const p = await warmPage(browserInstance);
+      pagePool.push(p);
+    } catch (e) {
+      console.error('[POOL] replenish error:', e.message);
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -82,72 +132,58 @@ function returnBrowserToPool(b) {
 async function consultarZonaPagos(documento, placa) {
   activeConsultations++;
   let browserInstance = null;
+  let page = null;
   const t0 = Date.now();
 
   try {
-    console.log(`[API] Consultando rápido - Doc: ${documento}, Placa: ${placa}`);
+    console.log(`[API] Consultando - Doc: ${documento}, Placa: ${placa}`);
 
     browserInstance = await getBrowserFromPool();
-    const page = await browserInstance.newPage();
+    page = await acquirePage(browserInstance);
 
-    // 1. Bloquear imágenes, css y fuentes para máxima velocidad
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      const type = req.resourceType();
-      if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
-        req.abort();
-      } else {
-        req.continue();
-      }
-    });
-
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-    await page.setViewport({ width: 1280, height: 800 });
-
-    console.log('[API] PASO 1: Navegando a PreLoginPage...');
-    await page.goto('https://zonapagos.com/NV_PagosN3/Views/preLogin/PreLoginPage.aspx?ico=33968', {
-      waitUntil: 'networkidle2', 
-      timeout: 30000
-    });
-
-    // Espera nativa (NO page.waitForTimeout)
-    await new Promise(r => setTimeout(r, 800));
-
-    console.log('[API] PASO 2: Esperando formulario...');
-    await page.waitForSelector('input[type="text"]', { timeout: 15000 });
-    
-    console.log('[API] PASO 3: Llenando documento...');
-    const inputs = await page.$$('input[type="text"]');
-    if (inputs.length >= 1) {
-      await inputs[0].click();
-      await inputs[0].type(documento, { delay: 10 }); 
+    // Si por alguna razón no quedó posicionada en el form (fallback), navega
+    const hasForm = await page.$('input[type="text"]');
+    if (!hasForm) {
+      await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      await page.waitForSelector('input[type="text"]', { timeout: 10000 });
     }
 
-    console.log('[API] PASO 4: Llenando placa...');
-    if (inputs.length >= 2) {
-      await inputs[1].click();
-      await inputs[1].type(placa, { delay: 10 });
-    }
+    console.log('[API] PASO 1: Llenando campos (directo, sin delay)...');
+    await page.evaluate((doc, plc) => {
+      const setValue = (el, value) => {
+        const setter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype, 'value'
+        ).set;
+        setter.call(el, value);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      const inputs = document.querySelectorAll('input[type="text"]');
+      if (inputs[0]) setValue(inputs[0], doc);
+      if (inputs[1]) setValue(inputs[1], plc);
+    }, documento, placa);
 
-    console.log('[API] PASO 5: Haciendo click en Continuar...');
+    console.log('[API] PASO 2: Click en Continuar...');
     const btn = await page.$('button[type="submit"], input[type="submit"]');
-    if (btn) {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {}),
-        btn.click()
-      ]);
-    }
+    if (btn) await btn.click();
 
-    // Espera nativa (NO page.waitForTimeout)
-    await new Promise(r => setTimeout(r, 800));
+    console.log('[API] PASO 3: Esperando resultados...');
+    // Espera a que la tabla tenga filas con datos (funciona con navegación o AJAX)
+    await page.waitForFunction(() => {
+      for (const tabla of document.querySelectorAll('table')) {
+        for (const row of tabla.querySelectorAll('tr')) {
+          const cells = row.querySelectorAll('td');
+          if (cells.length > 5 && cells[1]?.textContent?.trim()) return true;
+        }
+      }
+      return false;
+    }, { timeout: 15000 }).catch(() => {});
 
-    console.log('[API] PASO 6: Extrayendo datos con tabla...');
+    console.log('[API] PASO 4: Extrayendo datos...');
     const datosExtraidos = await page.evaluate(() => {
       const datos = [];
-      const tablas = document.querySelectorAll('table');
-      for (let tabla of tablas) {
-        const rows = tabla.querySelectorAll('tr');
-        for (let row of rows) {
+      for (const tabla of document.querySelectorAll('table')) {
+        for (const row of tabla.querySelectorAll('tr')) {
           const cells = row.querySelectorAll('td');
           if (cells.length > 5) {
             const rowData = {
@@ -156,50 +192,47 @@ async function consultarZonaPagos(documento, placa) {
               fechaVencimiento: cells[14]?.textContent?.trim() || '',
               valorSugerido: cells[15]?.textContent?.trim() || ''
             };
-            if (rowData.numeroCredito || rowData.placa) {
-              datos.push(rowData);
-            }
+            if (rowData.numeroCredito || rowData.placa) datos.push(rowData);
           }
         }
       }
       return datos;
     });
 
-    await page.close();
     const tiempoTotal = ((Date.now() - t0) / 1000).toFixed(2);
-    console.log(`[API] ✅ Consulta finalizada en ${tiempoTotal} segundos`);
+    console.log(`[API] ✅ Consulta finalizada en ${tiempoTotal}s`);
+
+    // Cerrar la page usada y reponer pool
+    try { await page.close(); } catch {}
+    page = null;
+    replenishPagePool(browserInstance);
 
     if (datosExtraidos.length > 0) {
       return {
         estado: 'exitoso',
-        documento: documento,
-        placa: placa,
+        documento,
+        placa,
         facturas: datosExtraidos,
         tiempoMs: Date.now() - t0,
         timestamp: new Date().toISOString()
       };
-    } else {
-      return {
-        error: 'No se encontraron facturas',
-        estado: 'no_encontrado',
-        documento: documento,
-        placa: placa
-      };
     }
+
+    return { error: 'No se encontraron facturas', estado: 'no_encontrado', documento, placa };
 
   } catch (error) {
     console.error('[API ERROR]', error.message);
+    // Si falló, intenta cerrar la page para no dejarla sucia
+    try { if (page) await page.close(); } catch {}
     throw error;
   } finally {
     activeConsultations--;
-    if (browserInstance) {
-      returnBrowserToPool(browserInstance);
-    }
+    if (browserInstance) returnBrowserToPool(browserInstance);
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ============= RAPPIPAY PSE ====================================
+// ============= RAPPIPAY PSE (SIN CAMBIOS) ======================
 // ═══════════════════════════════════════════════════════════════
 const RAPPIPAY_API = 'https://services.prod-k8s.rappipay.com/integration/pse/api';
 const RAPPIPAY_LINK_CODE = 'KAnsiZ';
@@ -401,6 +434,7 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     activeConsultations: activeConsultations,
     browserPoolSize: browserPool.length,
+    pagePoolSize: pagePool.length,
     queuedRequests: consultationQueue.length
   });
 });
