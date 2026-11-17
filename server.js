@@ -56,7 +56,7 @@ let browserPool = [];
 let pagePool = [];
 const MAX_PAGES = 5;
 const POOL_SIZE = 3;
-const WARM_PAGES = 1;            // ← activado: 1 page pre-calentada para ahorrar goto
+const WARM_PAGES = 1;            // 1 page pre-calentada
 let activeConsultations = 0;
 const consultationQueue = [];
 let replenishing = false;
@@ -66,7 +66,6 @@ async function launchBrowser() {
   if (USE_PROXY) {
     args.push(`--proxy-server=http://${GEONODE_HOST}:${GEONODE_PORT}`);
     args.push('--force-webrtc-ip-handling-policy=disable_non_proxied_udp');
-    // ⚡ No pasar ipinfo por proxy (diagnóstico rápido, sin latencia de proxy)
     args.push('--proxy-bypass-list=ipinfo.io;*.ipinfo.io');
   }
   return await puppeteer.launch({
@@ -88,7 +87,6 @@ async function setupPage(page) {
   page.on('request', (req) => {
     const t = req.resourceType();
     const url = req.url();
-    // Bloquear más agresivamente
     if (
       ['image', 'stylesheet', 'font', 'media', 'other', 'ping', 'manifest', 'websocket'].includes(t) ||
       /google-analytics|googletagmanager|doubleclick|facebook|hotjar|clarity|newrelic|sentry|segment|mixpanel|analytics|gtag|recaptcha|gstatic/.test(url)
@@ -122,9 +120,16 @@ async function warmPage(browser, retries = 1) {
     try {
       page = await browser.newPage();
       await setupPage(page);
-      // ⚡ 'commit' resuelve al primer byte (no espera DOM completo)
-      await page.goto(PRELOGIN_URL, { waitUntil: 'commit', timeout: 20000 });
+
+      // ⚡ goto sin bloquear + waitForSelector en paralelo
+      const navPromise = page.goto(PRELOGIN_URL, {
+        waitUntil: 'domcontentloaded',
+        timeout: 20000
+      }).catch(() => {});
+
       await page.waitForSelector('input[type="text"]', { timeout: 15000 });
+      await navPromise;
+
       return page;
     } catch (e) {
       lastErr = e;
@@ -183,7 +188,7 @@ function replenishPagePool(browserInstance) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ============= CONSULTA ZONA PAGOS (OPTIMIZADA LATENCIA) =======
+// ============= CONSULTA ZONA PAGOS (OPTIMIZADA) ================
 // ═══════════════════════════════════════════════════════════════
 async function consultarZonaPagos(documento, placa) {
   activeConsultations++;
@@ -199,16 +204,22 @@ async function consultarZonaPagos(documento, placa) {
 
     await clearPageState(page);
 
-    // Verificar form; si no, descartar y crear nueva
     let hasForm = await page.$('input[type="text"]').catch(() => null);
     if (!hasForm) {
       console.log('[API] No hay form → nueva page...');
       try { await page.close(); } catch {}
       page = await browserInstance.newPage();
       await setupPage(page);
-      await page.goto(PRELOGIN_URL, { waitUntil: 'commit', timeout: 20000 });
+
+      // ⚡ goto + waitForSelector en paralelo
+      const navPromise = page.goto(PRELOGIN_URL, {
+        waitUntil: 'domcontentloaded',
+        timeout: 20000
+      }).catch(() => {});
+
       try {
         await page.waitForSelector('input[type="text"]', { timeout: 15000 });
+        await navPromise;
       } catch (e) {
         const title = await page.title().catch(() => '?');
         const bodySnippet = await page.evaluate(() =>
@@ -234,7 +245,6 @@ async function consultarZonaPagos(documento, placa) {
     }, documento, placa);
 
     console.log('[API] PASO 2: Click Continuar...');
-    // Click + esperar tabla en un solo Promise.all (evita doble espera)
     const tablaPromise = page.waitForFunction(() => {
       for (const tabla of document.querySelectorAll('table')) {
         for (const row of tabla.querySelectorAll('tr')) {
