@@ -18,6 +18,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // ═══════════════════════════════════════════════════════════════
+// ============= CONFIG GEONODE (HARDCODEADO) ====================
+// ═══════════════════════════════════════════════════════════════
+const GEONODE_HOST = 'us.proxy.geonode.io';
+const GEONODE_PORT = 9000;
+const GEONODE_USER = 'geonode_PKlL1yvoTG-country-co';
+const GEONODE_PASS = '605d224e-19b6-4baa-8107-296ee7d836f5';
+const USE_PROXY = true;
+
+// ═══════════════════════════════════════════════════════════════
 // ============= POOL DE NAVEGADORES (GM) ========================
 // ═══════════════════════════════════════════════════════════════
 const PRELOGIN_URL = 'https://zonapagos.com/NV_PagosN3/Views/preLogin/PreLoginPage.aspx?ico=33968';
@@ -39,12 +48,28 @@ let browserPool = [];
 let pagePool = [];
 const MAX_PAGES = 5;
 const POOL_SIZE = 3;
-const WARM_PAGES = 2;
+const WARM_PAGES = 0;            // ← desactivado (volvemos al comportamiento estable)
 let activeConsultations = 0;
 const consultationQueue = [];
 let replenishing = false;
 
+// Lanza un browser con proxy Geonode si USE_PROXY
+async function launchBrowser() {
+  const args = [...CHROME_ARGS];
+  if (USE_PROXY) {
+    args.push(`--proxy-server=http://${GEONODE_HOST}:${GEONODE_PORT}`);
+    args.push('--force-webrtc-ip-handling-policy=disable_non_proxied_udp');
+  }
+  return await puppeteer.launch({ headless: 'new', args });
+}
+
 async function setupPage(page) {
+  // 1) Autenticación del proxy ANTES de interceptar
+  if (USE_PROXY) {
+    await page.authenticate({ username: GEONODE_USER, password: GEONODE_PASS });
+  }
+
+  // 2) Interceptación de requests
   await page.setRequestInterception(true);
   page.on('request', (req) => {
     const t = req.resourceType();
@@ -54,9 +79,23 @@ async function setupPage(page) {
       req.continue();
     }
   });
+
+  // 3) UA y viewport
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
   await page.setViewport({ width: 1280, height: 800 });
   return page;
+}
+
+// Limpia cookies y cache de una page (para reutilización limpia)
+async function clearPageState(page) {
+  try {
+    const cdp = await page.target().createCDPSession();
+    await cdp.send('Network.clearBrowserCookies');
+    await cdp.send('Network.clearBrowserCache');
+    await cdp.detach();
+  } catch (e) {
+    console.warn('[POOL] clearPageState error:', e.message);
+  }
 }
 
 async function warmPage(browser, retries = 2) {
@@ -66,14 +105,14 @@ async function warmPage(browser, retries = 2) {
     try {
       page = await browser.newPage();
       await setupPage(page);
-      await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
-      await page.waitForSelector('input[type="text"]', { timeout: 20000 });
+      await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForSelector('input[type="text"]', { timeout: 25000 });
       return page;
     } catch (e) {
       lastErr = e;
       console.error(`[POOL] warmPage intento ${attempt + 1}/${retries + 1} falló:`, e.message);
       try { if (page) await page.close(); } catch {}
-      if (attempt < retries) await new Promise(r => setTimeout(r, 1000));
+      if (attempt < retries) await new Promise(r => setTimeout(r, 1500));
     }
   }
   throw lastErr;
@@ -81,7 +120,7 @@ async function warmPage(browser, retries = 2) {
 
 async function initializeBrowserPool() {
   console.log('[POOL] Inicializando navegador...');
-  const b = await puppeteer.launch({ headless: 'new', args: CHROME_ARGS });
+  const b = await launchBrowser();
   browserPool.push(b);
   console.log(`[POOL] Navegador listo (${browserPool.length})`);
   return b;
@@ -91,7 +130,7 @@ async function getBrowserFromPool() {
   if (browserPool.length > 0) return browserPool.pop();
 
   if (activeConsultations < MAX_PAGES) {
-    return await puppeteer.launch({ headless: 'new', args: CHROME_ARGS });
+    return await launchBrowser();
   }
 
   return new Promise((resolve) => consultationQueue.push(resolve));
@@ -112,6 +151,7 @@ async function acquirePage(browserInstance) {
 }
 
 function replenishPagePool(browserInstance) {
+  if (WARM_PAGES === 0) return;
   if (replenishing) return;
   if (pagePool.length >= WARM_PAGES) return;
   if (!browserInstance) return;
@@ -130,7 +170,7 @@ function replenishPagePool(browserInstance) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ============= CONSULTA ZONA PAGOS (OPTIMIZADA) ================
+// ============= CONSULTA ZONA PAGOS =============================
 // ═══════════════════════════════════════════════════════════════
 async function consultarZonaPagos(documento, placa) {
   activeConsultations++;
@@ -144,13 +184,34 @@ async function consultarZonaPagos(documento, placa) {
     browserInstance = await getBrowserFromPool();
     page = await acquirePage(browserInstance);
 
-    // Verificar form; si no, navegar de nuevo con diagnóstico
-    const hasForm = await page.$('input[type="text"]').catch(() => null);
+    // Limpiar cookies/cache antes de usar (page limpia)
+    await clearPageState(page);
+
+    // Diagnóstico: ¿qué IP ve el sitio?
+    try {
+      const ipCheck = await page.evaluate(async () => {
+        try {
+          const r = await fetch('https://ipinfo.io/json');
+          return await r.json();
+        } catch { return null; }
+      });
+      if (ipCheck) console.log('[PROXY] IP salida:', ipCheck.ip, ipCheck.country, ipCheck.org);
+      else console.warn('[PROXY] ipinfo no respondió');
+    } catch (e) {
+      console.warn('[PROXY] No se pudo verificar IP:', e.message);
+    }
+
+    // Verificar form; si no está, descartar page y crear nueva
+    let hasForm = await page.$('input[type="text"]').catch(() => null);
     if (!hasForm) {
-      console.log('[API] No hay form en page del pool → navegando de nuevo...');
-      await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      console.log('[API] No hay form en page → descartando y creando nueva...');
+      try { await page.close(); } catch {}
+      page = await browserInstance.newPage();
+      await setupPage(page);
+      await page.goto(PRELOGIN_URL, { waitUntil: 'networkidle2', timeout: 30000 });
       try {
-        await page.waitForSelector('input[type="text"]', { timeout: 15000 });
+        await page.waitForSelector('input[type="text"]', { timeout: 30000 });
+        hasForm = true;
       } catch (e) {
         const title = await page.title().catch(() => '?');
         const url = page.url();
@@ -161,7 +222,7 @@ async function consultarZonaPagos(documento, placa) {
           Array.from(document.querySelectorAll('iframe')).map(f => f.src)
         ).catch(() => []);
         const bodySnippet = await page.evaluate(() =>
-          (document.body?.innerText || '').slice(0, 300)
+          (document.body?.innerText || '').slice(0, 400)
         ).catch(() => '');
 
         console.error('[API DIAG] title:', title);
@@ -204,7 +265,7 @@ async function consultarZonaPagos(documento, placa) {
         }
       }
       return false;
-    }, { timeout: 20000 }).then(() => true).catch(() => false);
+    }, { timeout: 25000 }).then(() => true).catch(() => false);
 
     if (!gotResults) console.warn('[API] Timeout esperando tabla de resultados');
 
@@ -462,6 +523,7 @@ app.post('/api/consultar', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
+    proxy: USE_PROXY ? `${GEONODE_HOST}:${GEONODE_PORT} (${GEONODE_USER})` : 'off',
     activeConsultations,
     browserPoolSize: browserPool.length,
     pagePoolSize: pagePool.length,
@@ -469,16 +531,27 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 🩺 Endpoint de diagnóstico ZonaPagos
+// 🩺 Diagnóstico ZonaPagos (usa proxy)
 app.get('/api/debug-zonapagos', async (req, res) => {
   let b, page;
   try {
-    b = await puppeteer.launch({ headless: 'new', args: CHROME_ARGS });
+    b = await launchBrowser();
     page = await b.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-    const r = await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await setupPage(page);
+
+    // IP que ve el sitio
+    const ipCheck = await page.evaluate(async () => {
+      try {
+        const r = await fetch('https://ipinfo.io/json');
+        return await r.json();
+      } catch { return null; }
+    }).catch(() => null);
+
+    const r = await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await new Promise(res => setTimeout(res, 2000));
     const info = {
+      proxy: USE_PROXY ? `${GEONODE_HOST}:${GEONODE_PORT}` : 'off',
+      exitIp: ipCheck,
       status: r?.status(),
       title: await page.title(),
       url: page.url(),
@@ -509,29 +582,30 @@ app.get('/', (req, res) => {
 
 async function start() {
   try {
-    // 1. Browser primero (rápido)
     const b = await initializeBrowserPool();
 
-    // 2. Puerto YA (Render deja de mandar SIGTERM)
     app.listen(PORT, () => {
       console.log(`✅ Servidor en puerto ${PORT}`);
       console.log(`🔗 POST http://localhost:${PORT}/api/consultar`);
       console.log(`🔗 GET  http://localhost:${PORT}/pse/bancos`);
       console.log(`🔗 POST http://localhost:${PORT}/pse/pagar`);
       console.log(`🩺 GET  http://localhost:${PORT}/api/debug-zonapagos`);
+      console.log(`🌐 Proxy: ${USE_PROXY ? GEONODE_HOST + ':' + GEONODE_PORT + ' (' + GEONODE_USER + ')' : 'OFF'}`);
     });
 
-    // 3. Warm en background (no bloquea)
-    (async () => {
-      for (let i = 0; i < WARM_PAGES; i++) {
-        try {
-          pagePool.push(await warmPage(b));
-          console.log(`[POOL] Página pre-calentada ${pagePool.length}/${WARM_PAGES}`);
-        } catch (e) {
-          console.error('[POOL] warmPage error:', e.message);
+    // Warm en background (WARM_PAGES = 0 → no hace nada, pero lo dejamos por si lo activas)
+    if (WARM_PAGES > 0) {
+      (async () => {
+        for (let i = 0; i < WARM_PAGES; i++) {
+          try {
+            pagePool.push(await warmPage(b));
+            console.log(`[POOL] Página pre-calentada ${pagePool.length}/${WARM_PAGES}`);
+          } catch (e) {
+            console.error('[POOL] warmPage error:', e.message);
+          }
         }
-      }
-    })();
+      })();
+    }
 
   } catch (error) {
     console.error('Error al iniciar:', error);
