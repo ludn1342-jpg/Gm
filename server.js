@@ -6,7 +6,7 @@ import https from 'https';
 import crypto from 'crypto';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 10000;
 
 app.use(cors());
 app.use((req, res, next) => {
@@ -41,52 +41,69 @@ const CHROME_ARGS = [
   '--disable-backgrounding-occluded-windows',
   '--no-first-run',
   '--no-default-browser-check',
-  '--disable-extensions'
+  '--disable-extensions',
+  '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+  '--disable-ipc-flooding-protection',
+  '--disable-hang-monitor',
+  '--disable-prompt-on-repost',
+  '--disable-sync',
+  '--metrics-recording-only',
+  '--no-zygote',
+  '--renderer-process-limit=1',
 ];
 
 let browserPool = [];
 let pagePool = [];
 const MAX_PAGES = 5;
 const POOL_SIZE = 3;
-const WARM_PAGES = 0;            // ← desactivado (volvemos al comportamiento estable)
+const WARM_PAGES = 1;            // ← activado: 1 page pre-calentada para ahorrar goto
 let activeConsultations = 0;
 const consultationQueue = [];
 let replenishing = false;
 
-// Lanza un browser con proxy Geonode si USE_PROXY
 async function launchBrowser() {
   const args = [...CHROME_ARGS];
   if (USE_PROXY) {
     args.push(`--proxy-server=http://${GEONODE_HOST}:${GEONODE_PORT}`);
     args.push('--force-webrtc-ip-handling-policy=disable_non_proxied_udp');
+    // ⚡ No pasar ipinfo por proxy (diagnóstico rápido, sin latencia de proxy)
+    args.push('--proxy-bypass-list=ipinfo.io;*.ipinfo.io');
   }
-  return await puppeteer.launch({ headless: 'new', args });
+  return await puppeteer.launch({
+    headless: 'new',
+    args,
+    protocolTimeout: 30000,
+  });
 }
 
 async function setupPage(page) {
-  // 1) Autenticación del proxy ANTES de interceptar
   if (USE_PROXY) {
     await page.authenticate({ username: GEONODE_USER, password: GEONODE_PASS });
   }
 
-  // 2) Interceptación de requests
+  await page.setDefaultTimeout(12000);
+  await page.setDefaultNavigationTimeout(20000);
+
   await page.setRequestInterception(true);
   page.on('request', (req) => {
     const t = req.resourceType();
-    if (['image', 'stylesheet', 'font', 'media', 'other', 'ping', 'manifest'].includes(t)) {
+    const url = req.url();
+    // Bloquear más agresivamente
+    if (
+      ['image', 'stylesheet', 'font', 'media', 'other', 'ping', 'manifest', 'websocket'].includes(t) ||
+      /google-analytics|googletagmanager|doubleclick|facebook|hotjar|clarity|newrelic|sentry|segment|mixpanel|analytics|gtag|recaptcha|gstatic/.test(url)
+    ) {
       req.abort();
     } else {
       req.continue();
     }
   });
 
-  // 3) UA y viewport
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
   await page.setViewport({ width: 1280, height: 800 });
   return page;
 }
 
-// Limpia cookies y cache de una page (para reutilización limpia)
 async function clearPageState(page) {
   try {
     const cdp = await page.target().createCDPSession();
@@ -94,25 +111,26 @@ async function clearPageState(page) {
     await cdp.send('Network.clearBrowserCache');
     await cdp.detach();
   } catch (e) {
-    console.warn('[POOL] clearPageState error:', e.message);
+    // silencioso
   }
 }
 
-async function warmPage(browser, retries = 2) {
+async function warmPage(browser, retries = 1) {
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
     let page;
     try {
       page = await browser.newPage();
       await setupPage(page);
-      await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForSelector('input[type="text"]', { timeout: 25000 });
+      // ⚡ 'commit' resuelve al primer byte (no espera DOM completo)
+      await page.goto(PRELOGIN_URL, { waitUntil: 'commit', timeout: 20000 });
+      await page.waitForSelector('input[type="text"]', { timeout: 15000 });
       return page;
     } catch (e) {
       lastErr = e;
       console.error(`[POOL] warmPage intento ${attempt + 1}/${retries + 1} falló:`, e.message);
       try { if (page) await page.close(); } catch {}
-      if (attempt < retries) await new Promise(r => setTimeout(r, 1500));
+      if (attempt < retries) await new Promise(r => setTimeout(r, 800));
     }
   }
   throw lastErr;
@@ -128,17 +146,12 @@ async function initializeBrowserPool() {
 
 async function getBrowserFromPool() {
   if (browserPool.length > 0) return browserPool.pop();
-
-  if (activeConsultations < MAX_PAGES) {
-    return await launchBrowser();
-  }
-
+  if (activeConsultations < MAX_PAGES) return await launchBrowser();
   return new Promise((resolve) => consultationQueue.push(resolve));
 }
 
 function returnBrowserToPool(b) {
   if (browserPool.length < POOL_SIZE) browserPool.push(b);
-
   if (consultationQueue.length > 0) {
     const resolve = consultationQueue.shift();
     resolve(b);
@@ -170,7 +183,7 @@ function replenishPagePool(browserInstance) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ============= CONSULTA ZONA PAGOS =============================
+// ============= CONSULTA ZONA PAGOS (OPTIMIZADA LATENCIA) =======
 // ═══════════════════════════════════════════════════════════════
 async function consultarZonaPagos(documento, placa) {
   activeConsultations++;
@@ -184,56 +197,24 @@ async function consultarZonaPagos(documento, placa) {
     browserInstance = await getBrowserFromPool();
     page = await acquirePage(browserInstance);
 
-    // Limpiar cookies/cache antes de usar (page limpia)
     await clearPageState(page);
 
-    // Diagnóstico: ¿qué IP ve el sitio?
-    try {
-      const ipCheck = await page.evaluate(async () => {
-        try {
-          const r = await fetch('https://ipinfo.io/json');
-          return await r.json();
-        } catch { return null; }
-      });
-      if (ipCheck) console.log('[PROXY] IP salida:', ipCheck.ip, ipCheck.country, ipCheck.org);
-      else console.warn('[PROXY] ipinfo no respondió');
-    } catch (e) {
-      console.warn('[PROXY] No se pudo verificar IP:', e.message);
-    }
-
-    // Verificar form; si no está, descartar page y crear nueva
+    // Verificar form; si no, descartar y crear nueva
     let hasForm = await page.$('input[type="text"]').catch(() => null);
     if (!hasForm) {
-      console.log('[API] No hay form en page → descartando y creando nueva...');
+      console.log('[API] No hay form → nueva page...');
       try { await page.close(); } catch {}
       page = await browserInstance.newPage();
       await setupPage(page);
-      await page.goto(PRELOGIN_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+      await page.goto(PRELOGIN_URL, { waitUntil: 'commit', timeout: 20000 });
       try {
-        await page.waitForSelector('input[type="text"]', { timeout: 30000 });
-        hasForm = true;
+        await page.waitForSelector('input[type="text"]', { timeout: 15000 });
       } catch (e) {
         const title = await page.title().catch(() => '?');
-        const url = page.url();
-        const inputs = await page.evaluate(() =>
-          Array.from(document.querySelectorAll('input')).map(i => ({ type: i.type, id: i.id, name: i.name }))
-        ).catch(() => []);
-        const iframes = await page.evaluate(() =>
-          Array.from(document.querySelectorAll('iframe')).map(f => f.src)
-        ).catch(() => []);
         const bodySnippet = await page.evaluate(() =>
-          (document.body?.innerText || '').slice(0, 400)
+          (document.body?.innerText || '').slice(0, 300)
         ).catch(() => '');
-
-        console.error('[API DIAG] title:', title);
-        console.error('[API DIAG] url:', url);
-        console.error('[API DIAG] inputs:', JSON.stringify(inputs));
-        console.error('[API DIAG] iframes:', JSON.stringify(iframes));
-        console.error('[API DIAG] body:', bodySnippet);
-
-        throw new Error(
-          `Formulario no encontrado. title="${title}" url="${url}" inputs=${inputs.length} iframes=${iframes.length}`
-        );
+        throw new Error(`Form no encontrado. title="${title}" body="${bodySnippet.slice(0, 100)}"`);
       }
     }
 
@@ -252,12 +233,9 @@ async function consultarZonaPagos(documento, placa) {
       if (inputs[1]) setValue(inputs[1], plc);
     }, documento, placa);
 
-    console.log('[API] PASO 2: Click en Continuar...');
-    const btn = await page.$('button[type="submit"], input[type="submit"]');
-    if (btn) await btn.click();
-
-    console.log('[API] PASO 3: Esperando resultados...');
-    const gotResults = await page.waitForFunction(() => {
+    console.log('[API] PASO 2: Click Continuar...');
+    // Click + esperar tabla en un solo Promise.all (evita doble espera)
+    const tablaPromise = page.waitForFunction(() => {
       for (const tabla of document.querySelectorAll('table')) {
         for (const row of tabla.querySelectorAll('tr')) {
           const cells = row.querySelectorAll('td');
@@ -265,9 +243,14 @@ async function consultarZonaPagos(documento, placa) {
         }
       }
       return false;
-    }, { timeout: 25000 }).then(() => true).catch(() => false);
+    }, { timeout: 15000 }).catch(() => false);
 
-    if (!gotResults) console.warn('[API] Timeout esperando tabla de resultados');
+    const btn = await page.$('button[type="submit"], input[type="submit"]');
+    if (btn) await btn.click();
+
+    console.log('[API] PASO 3: Esperando resultados...');
+    const gotResults = await tablaPromise;
+    if (!gotResults) console.warn('[API] Timeout esperando tabla');
 
     console.log('[API] PASO 4: Extrayendo datos...');
     const datosExtraidos = await page.evaluate(() => {
@@ -290,7 +273,7 @@ async function consultarZonaPagos(documento, placa) {
     });
 
     const tiempoTotal = ((Date.now() - t0) / 1000).toFixed(2);
-    console.log(`[API] ✅ Consulta finalizada en ${tiempoTotal}s`);
+    console.log(`[API] ✅ Consulta en ${tiempoTotal}s`);
 
     try { await page.close(); } catch {}
     page = null;
@@ -306,7 +289,6 @@ async function consultarZonaPagos(documento, placa) {
         timestamp: new Date().toISOString()
       };
     }
-
     return { error: 'No se encontraron facturas', estado: 'no_encontrado', documento, placa };
 
   } catch (error) {
@@ -523,55 +505,12 @@ app.post('/api/consultar', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    proxy: USE_PROXY ? `${GEONODE_HOST}:${GEONODE_PORT} (${GEONODE_USER})` : 'off',
+    proxy: USE_PROXY ? `${GEONODE_HOST}:${GEONODE_PORT}` : 'off',
     activeConsultations,
     browserPoolSize: browserPool.length,
     pagePoolSize: pagePool.length,
     queuedRequests: consultationQueue.length
   });
-});
-
-// 🩺 Diagnóstico ZonaPagos (usa proxy)
-app.get('/api/debug-zonapagos', async (req, res) => {
-  let b, page;
-  try {
-    b = await launchBrowser();
-    page = await b.newPage();
-    await setupPage(page);
-
-    // IP que ve el sitio
-    const ipCheck = await page.evaluate(async () => {
-      try {
-        const r = await fetch('https://ipinfo.io/json');
-        return await r.json();
-      } catch { return null; }
-    }).catch(() => null);
-
-    const r = await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await new Promise(res => setTimeout(res, 2000));
-    const info = {
-      proxy: USE_PROXY ? `${GEONODE_HOST}:${GEONODE_PORT}` : 'off',
-      exitIp: ipCheck,
-      status: r?.status(),
-      title: await page.title(),
-      url: page.url(),
-      inputs: await page.evaluate(() =>
-        Array.from(document.querySelectorAll('input')).map(i => ({ type: i.type, id: i.id, name: i.name }))
-      ),
-      iframes: await page.evaluate(() =>
-        Array.from(document.querySelectorAll('iframe')).map(f => f.src)
-      ),
-      bodySnippet: await page.evaluate(() =>
-        (document.body?.innerText || '').slice(0, 500)
-      )
-    };
-    res.json(info);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  } finally {
-    try { await page?.close(); } catch {}
-    try { await b?.close(); } catch {}
-  }
 });
 
 app.use(express.static('.'));
@@ -586,14 +525,12 @@ async function start() {
 
     app.listen(PORT, () => {
       console.log(`✅ Servidor en puerto ${PORT}`);
-      console.log(`🔗 POST http://localhost:${PORT}/api/consultar`);
-      console.log(`🔗 GET  http://localhost:${PORT}/pse/bancos`);
-      console.log(`🔗 POST http://localhost:${PORT}/pse/pagar`);
-      console.log(`🩺 GET  http://localhost:${PORT}/api/debug-zonapagos`);
-      console.log(`🌐 Proxy: ${USE_PROXY ? GEONODE_HOST + ':' + GEONODE_PORT + ' (' + GEONODE_USER + ')' : 'OFF'}`);
+      console.log(`🔗 POST /api/consultar`);
+      console.log(`🔗 GET  /pse/bancos`);
+      console.log(`🔗 POST /pse/pagar`);
+      console.log(`🌐 Proxy: ${USE_PROXY ? GEONODE_HOST + ':' + GEONODE_PORT : 'OFF'}`);
     });
 
-    // Warm en background (WARM_PAGES = 0 → no hace nada, pero lo dejamos por si lo activas)
     if (WARM_PAGES > 0) {
       (async () => {
         for (let i = 0; i < WARM_PAGES; i++) {
