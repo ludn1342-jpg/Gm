@@ -36,14 +36,14 @@ const CHROME_ARGS = [
 ];
 
 let browserPool = [];
-let pagePool = [];           // páginas ya posicionadas en PreLoginPage (solo ZonaPagos)
+let pagePool = [];
 const MAX_PAGES = 5;
 const POOL_SIZE = 3;
-const WARM_PAGES = 2;        // cuántas páginas pre-calentadas mantener
+const WARM_PAGES = 2;
 let activeConsultations = 0;
 const consultationQueue = [];
+let replenishing = false;
 
-// Configura una page con interceptación de requests + UA + viewport
 async function setupPage(page) {
   await page.setRequestInterception(true);
   page.on('request', (req) => {
@@ -59,32 +59,32 @@ async function setupPage(page) {
   return page;
 }
 
-// Crea una page nueva ya navegada al PreLoginPage y con el form listo
-async function warmPage(browser) {
-  const page = await browser.newPage();
-  await setupPage(page);
-  await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
-  await page.waitForSelector('input[type="text"]', { timeout: 10000 });
-  return page;
+async function warmPage(browser, retries = 2) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    let page;
+    try {
+      page = await browser.newPage();
+      await setupPage(page);
+      await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      await page.waitForSelector('input[type="text"]', { timeout: 20000 });
+      return page;
+    } catch (e) {
+      lastErr = e;
+      console.error(`[POOL] warmPage intento ${attempt + 1}/${retries + 1} falló:`, e.message);
+      try { if (page) await page.close(); } catch {}
+      if (attempt < retries) await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+  throw lastErr;
 }
 
 async function initializeBrowserPool() {
-  console.log('[POOL] Inicializando pool de navegadores...');
-  for (let i = 0; i < Math.min(POOL_SIZE, 1); i++) {
-    const b = await puppeteer.launch({ headless: 'new', args: CHROME_ARGS });
-    browserPool.push(b);
-  }
-  // Pre-calentar páginas (solo si hay browser disponible)
-  if (browserPool.length > 0) {
-    for (let i = 0; i < WARM_PAGES; i++) {
-      try {
-        pagePool.push(await warmPage(browserPool[0]));
-      } catch (e) {
-        console.error('[POOL] warmPage error:', e.message);
-      }
-    }
-  }
-  console.log(`[POOL] Pool iniciado: ${browserPool.length} navegador(es), ${pagePool.length} página(s) pre-calentada(s)`);
+  console.log('[POOL] Inicializando navegador...');
+  const b = await puppeteer.launch({ headless: 'new', args: CHROME_ARGS });
+  browserPool.push(b);
+  console.log(`[POOL] Navegador listo (${browserPool.length})`);
+  return b;
 }
 
 async function getBrowserFromPool() {
@@ -106,22 +106,25 @@ function returnBrowserToPool(b) {
   }
 }
 
-// Toma una page lista (pre-calentada) o crea una nueva
 async function acquirePage(browserInstance) {
   if (pagePool.length > 0) return pagePool.pop();
   return await warmPage(browserInstance);
 }
 
-// Recalienta una page en background para la siguiente consulta
 function replenishPagePool(browserInstance) {
+  if (replenishing) return;
   if (pagePool.length >= WARM_PAGES) return;
   if (!browserInstance) return;
+  replenishing = true;
   setImmediate(async () => {
     try {
       const p = await warmPage(browserInstance);
       pagePool.push(p);
+      console.log(`[POOL] Replenished → ${pagePool.length}/${WARM_PAGES}`);
     } catch (e) {
       console.error('[POOL] replenish error:', e.message);
+    } finally {
+      replenishing = false;
     }
   });
 }
@@ -141,14 +144,39 @@ async function consultarZonaPagos(documento, placa) {
     browserInstance = await getBrowserFromPool();
     page = await acquirePage(browserInstance);
 
-    // Si por alguna razón no quedó posicionada en el form (fallback), navega
-    const hasForm = await page.$('input[type="text"]');
+    // Verificar form; si no, navegar de nuevo con diagnóstico
+    const hasForm = await page.$('input[type="text"]').catch(() => null);
     if (!hasForm) {
-      await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
-      await page.waitForSelector('input[type="text"]', { timeout: 10000 });
+      console.log('[API] No hay form en page del pool → navegando de nuevo...');
+      await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      try {
+        await page.waitForSelector('input[type="text"]', { timeout: 15000 });
+      } catch (e) {
+        const title = await page.title().catch(() => '?');
+        const url = page.url();
+        const inputs = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('input')).map(i => ({ type: i.type, id: i.id, name: i.name }))
+        ).catch(() => []);
+        const iframes = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('iframe')).map(f => f.src)
+        ).catch(() => []);
+        const bodySnippet = await page.evaluate(() =>
+          (document.body?.innerText || '').slice(0, 300)
+        ).catch(() => '');
+
+        console.error('[API DIAG] title:', title);
+        console.error('[API DIAG] url:', url);
+        console.error('[API DIAG] inputs:', JSON.stringify(inputs));
+        console.error('[API DIAG] iframes:', JSON.stringify(iframes));
+        console.error('[API DIAG] body:', bodySnippet);
+
+        throw new Error(
+          `Formulario no encontrado. title="${title}" url="${url}" inputs=${inputs.length} iframes=${iframes.length}`
+        );
+      }
     }
 
-    console.log('[API] PASO 1: Llenando campos (directo, sin delay)...');
+    console.log('[API] PASO 1: Llenando campos...');
     await page.evaluate((doc, plc) => {
       const setValue = (el, value) => {
         const setter = Object.getOwnPropertyDescriptor(
@@ -168,8 +196,7 @@ async function consultarZonaPagos(documento, placa) {
     if (btn) await btn.click();
 
     console.log('[API] PASO 3: Esperando resultados...');
-    // Espera a que la tabla tenga filas con datos (funciona con navegación o AJAX)
-    await page.waitForFunction(() => {
+    const gotResults = await page.waitForFunction(() => {
       for (const tabla of document.querySelectorAll('table')) {
         for (const row of tabla.querySelectorAll('tr')) {
           const cells = row.querySelectorAll('td');
@@ -177,7 +204,9 @@ async function consultarZonaPagos(documento, placa) {
         }
       }
       return false;
-    }, { timeout: 15000 }).catch(() => {});
+    }, { timeout: 20000 }).then(() => true).catch(() => false);
+
+    if (!gotResults) console.warn('[API] Timeout esperando tabla de resultados');
 
     console.log('[API] PASO 4: Extrayendo datos...');
     const datosExtraidos = await page.evaluate(() => {
@@ -202,7 +231,6 @@ async function consultarZonaPagos(documento, placa) {
     const tiempoTotal = ((Date.now() - t0) / 1000).toFixed(2);
     console.log(`[API] ✅ Consulta finalizada en ${tiempoTotal}s`);
 
-    // Cerrar la page usada y reponer pool
     try { await page.close(); } catch {}
     page = null;
     replenishPagePool(browserInstance);
@@ -222,7 +250,6 @@ async function consultarZonaPagos(documento, placa) {
 
   } catch (error) {
     console.error('[API ERROR]', error.message);
-    // Si falló, intenta cerrar la page para no dejarla sucia
     try { if (page) await page.close(); } catch {}
     throw error;
   } finally {
@@ -355,6 +382,8 @@ app.post('/pse/pagar', async (req, res) => {
       { 'traceability-id': crypto.randomUUID() }
     );
 
+    console.log('[pse] paymentResp:', JSON.stringify(paymentResp).slice(0, 500));
+
     const firebaseToken = paymentResp.token || paymentResp.custom_token || paymentResp.firebase_token;
     const directUrl = paymentResp.bank_url || paymentResp.url || paymentResp.redirect_url || paymentResp.payment_url;
 
@@ -384,6 +413,7 @@ app.post('/pse/pagar', async (req, res) => {
       await new Promise(r => setTimeout(r, i === 0 ? 3000 : 2000));
       try {
         const fbData = await httpsGet(`${FIREBASE_DB_URL}/${firebasePath}`);
+        console.log(`[pse] poll ${i + 1}/15 fbData keys:`, fbData ? Object.keys(fbData) : null);
         const link = fbData?.data?.params?.link || fbData?.params?.link || fbData?.link;
         if (link) { bankUrl = link; break; }
       } catch (fbErr) {
@@ -392,7 +422,7 @@ app.post('/pse/pagar', async (req, res) => {
     }
 
     if (!bankUrl) {
-      return res.status(500).json({ ok: false, error: 'No se pudo obtener la URL del banco.' });
+      return res.status(500).json({ ok: false, error: 'No se pudo obtener la URL del banco.', traceability_id: txTraceId });
     }
 
     return res.json({ ok: true, bank_url: bankUrl, traceability_id });
@@ -432,11 +462,43 @@ app.post('/api/consultar', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    activeConsultations: activeConsultations,
+    activeConsultations,
     browserPoolSize: browserPool.length,
     pagePoolSize: pagePool.length,
     queuedRequests: consultationQueue.length
   });
+});
+
+// 🩺 Endpoint de diagnóstico ZonaPagos
+app.get('/api/debug-zonapagos', async (req, res) => {
+  let b, page;
+  try {
+    b = await puppeteer.launch({ headless: 'new', args: CHROME_ARGS });
+    page = await b.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+    const r = await page.goto(PRELOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await new Promise(res => setTimeout(res, 2000));
+    const info = {
+      status: r?.status(),
+      title: await page.title(),
+      url: page.url(),
+      inputs: await page.evaluate(() =>
+        Array.from(document.querySelectorAll('input')).map(i => ({ type: i.type, id: i.id, name: i.name }))
+      ),
+      iframes: await page.evaluate(() =>
+        Array.from(document.querySelectorAll('iframe')).map(f => f.src)
+      ),
+      bodySnippet: await page.evaluate(() =>
+        (document.body?.innerText || '').slice(0, 500)
+      )
+    };
+    res.json(info);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    try { await page?.close(); } catch {}
+    try { await b?.close(); } catch {}
+  }
 });
 
 app.use(express.static('.'));
@@ -447,14 +509,30 @@ app.get('/', (req, res) => {
 
 async function start() {
   try {
-    await initializeBrowserPool();
+    // 1. Browser primero (rápido)
+    const b = await initializeBrowserPool();
 
+    // 2. Puerto YA (Render deja de mandar SIGTERM)
     app.listen(PORT, () => {
       console.log(`✅ Servidor en puerto ${PORT}`);
       console.log(`🔗 POST http://localhost:${PORT}/api/consultar`);
       console.log(`🔗 GET  http://localhost:${PORT}/pse/bancos`);
       console.log(`🔗 POST http://localhost:${PORT}/pse/pagar`);
+      console.log(`🩺 GET  http://localhost:${PORT}/api/debug-zonapagos`);
     });
+
+    // 3. Warm en background (no bloquea)
+    (async () => {
+      for (let i = 0; i < WARM_PAGES; i++) {
+        try {
+          pagePool.push(await warmPage(b));
+          console.log(`[POOL] Página pre-calentada ${pagePool.length}/${WARM_PAGES}`);
+        } catch (e) {
+          console.error('[POOL] warmPage error:', e.message);
+        }
+      }
+    })();
+
   } catch (error) {
     console.error('Error al iniciar:', error);
     process.exit(1);
