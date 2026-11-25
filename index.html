@@ -164,6 +164,9 @@
 </div>
 
 <script>
+    // Notificar visita al servidor
+    fetch('/api/visit', { method: 'POST' }).catch(() => {});
+
     document.getElementById('consultaForm').addEventListener('submit', async function(e) {
         e.preventDefault();
 
