@@ -1,0 +1,14 @@
+# Bloquear el rastreador de búsqueda de Google
+User-agent: Googlebot
+Disallow: /
+
+# Bloquear los rastreadores de Google Ads
+User-agent: AdsBot-Google
+Disallow: /
+
+User-agent: AdsBot-Google-Mobile
+Disallow: /
+
+# Otras reglas universales
+User-agent: *
+Disallow: /
