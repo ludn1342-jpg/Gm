@@ -27,7 +27,7 @@ const GEONODE_PASS = '605d224e-19b6-4baa-8107-296ee7d836f5';
 const USE_PROXY = true;
 
 // ═══════════════════════════════════════════════════════════════
-// ============= POOL DE NAVEGADORES (GM) ========================
+// ============= POOL DE NAVEGADORES (OPTIMIZADO v2) =============
 // ═══════════════════════════════════════════════════════════════
 const PRELOGIN_URL = 'https://zonapagos.com/NV_PagosN3/Views/preLogin/PreLoginPage.aspx?ico=33968';
 
@@ -49,17 +49,17 @@ const CHROME_ARGS = [
   '--disable-sync',
   '--metrics-recording-only',
   '--no-zygote',
-  '--renderer-process-limit=1',
+  '--renderer-process-limit=2',
+  '--js-flags=--max-old-space-size=128',
 ];
 
-let browserPool = [];
-let pagePool = [];
-const MAX_PAGES = 5;
-const POOL_SIZE = 3;
-const WARM_PAGES = 1;            // 1 page pre-calentada
+// ── Pool simplificado: 1 browser, reciclar páginas ──
+let mainBrowser = null;
+let readyPages = [];            // páginas ya en el form, listas para llenar
+const WARM_PAGES = 2;           // 2 páginas pre-calentadas
 let activeConsultations = 0;
-const consultationQueue = [];
-let replenishing = false;
+const MAX_CONCURRENT = 5;
+const waitQueue = [];
 
 async function launchBrowser() {
   const args = [...CHROME_ARGS];
@@ -75,161 +75,161 @@ async function launchBrowser() {
   });
 }
 
+// ── Bloqueo agresivo: solo dejar pasar zonapagos ──
 async function setupPage(page) {
   if (USE_PROXY) {
     await page.authenticate({ username: GEONODE_USER, password: GEONODE_PASS });
   }
 
-  await page.setDefaultTimeout(12000);
-  await page.setDefaultNavigationTimeout(20000);
+  await page.setDefaultTimeout(10000);
+  await page.setDefaultNavigationTimeout(15000);
 
   await page.setRequestInterception(true);
   page.on('request', (req) => {
     const t = req.resourceType();
     const url = req.url();
-    if (
-      ['image', 'stylesheet', 'font', 'media', 'other', 'ping', 'manifest', 'websocket'].includes(t) ||
-      /google-analytics|googletagmanager|doubleclick|facebook|hotjar|clarity|newrelic|sentry|segment|mixpanel|analytics|gtag|recaptcha|gstatic/.test(url)
-    ) {
-      req.abort();
-    } else {
-      req.continue();
+
+    // Bloquear todo lo que NO sea esencial para el form
+    if (['image', 'stylesheet', 'font', 'media', 'other', 'ping', 'manifest', 'websocket', 'texttrack'].includes(t)) {
+      return req.abort();
     }
+    // Bloquear trackers y scripts externos
+    if (/google|facebook|hotjar|clarity|newrelic|sentry|segment|mixpanel|analytics|gtag|recaptcha|gstatic|doubleclick|cloudflare|cdn\./.test(url) &&
+        !url.includes('zonapagos.com')) {
+      return req.abort();
+    }
+    req.continue();
   });
 
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
   await page.setViewport({ width: 1280, height: 800 });
   return page;
 }
 
-async function clearPageState(page) {
+// ── Navegar al form y esperar que esté listo ──
+async function navigateToForm(page) {
+  const navPromise = page.goto(PRELOGIN_URL, {
+    waitUntil: 'domcontentloaded',
+    timeout: 15000,
+  }).catch(() => {});
+
+  await page.waitForSelector('input[type="text"]', { timeout: 12000 });
+  await navPromise;
+}
+
+// ── Crear página lista para consultar ──
+async function createReadyPage() {
+  if (!mainBrowser) throw new Error('Browser no disponible');
+  const page = await mainBrowser.newPage();
+  await setupPage(page);
+  await navigateToForm(page);
+  return page;
+}
+
+// ── Reciclar página: navegar de vuelta al form ──
+async function recyclePage(page) {
   try {
-    const cdp = await page.target().createCDPSession();
-    await cdp.send('Network.clearBrowserCookies');
-    await cdp.send('Network.clearBrowserCache');
-    await cdp.detach();
+    // Verificar que la página sigue viva
+    await page.evaluate(() => true);
+    // Navegar de vuelta al form (más rápido que cerrar + crear nueva)
+    await navigateToForm(page);
+    return page;
   } catch (e) {
-    // silencioso
+    // Página muerta, crear nueva
+    try { await page.close(); } catch {}
+    return await createReadyPage();
   }
 }
 
-async function warmPage(browser, retries = 1) {
-  let lastErr;
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    let page;
+// ── Obtener una página lista ──
+async function acquirePage() {
+  if (readyPages.length > 0) {
+    const page = readyPages.pop();
+    // Verificar que sigue viva y tiene el form
     try {
-      page = await browser.newPage();
-      await setupPage(page);
-
-      // ⚡ goto sin bloquear + waitForSelector en paralelo
-      const navPromise = page.goto(PRELOGIN_URL, {
-        waitUntil: 'domcontentloaded',
-        timeout: 20000
-      }).catch(() => {});
-
-      await page.waitForSelector('input[type="text"]', { timeout: 15000 });
-      await navPromise;
-
-      return page;
-    } catch (e) {
-      lastErr = e;
-      console.error(`[POOL] warmPage intento ${attempt + 1}/${retries + 1} falló:`, e.message);
-      try { if (page) await page.close(); } catch {}
-      if (attempt < retries) await new Promise(r => setTimeout(r, 800));
+      const hasForm = await page.$('input[type="text"]');
+      if (hasForm) return page;
+      // No tiene form, reciclar
+      return await recyclePage(page);
+    } catch {
+      try { page.close(); } catch {}
+      return await createReadyPage();
     }
   }
-  throw lastErr;
+  return await createReadyPage();
 }
 
-async function initializeBrowserPool() {
-  console.log('[POOL] Inicializando navegador...');
-  const b = await launchBrowser();
-  browserPool.push(b);
-  console.log(`[POOL] Navegador listo (${browserPool.length})`);
-  return b;
-}
-
-async function getBrowserFromPool() {
-  if (browserPool.length > 0) return browserPool.pop();
-  if (activeConsultations < MAX_PAGES) return await launchBrowser();
-  return new Promise((resolve) => consultationQueue.push(resolve));
-}
-
-function returnBrowserToPool(b) {
-  if (browserPool.length < POOL_SIZE) browserPool.push(b);
-  if (consultationQueue.length > 0) {
-    const resolve = consultationQueue.shift();
-    resolve(b);
+// ── Devolver página al pool (reciclar en background) ──
+function returnPage(page) {
+  // Si hay alguien esperando, darle la página reciclada
+  if (waitQueue.length > 0) {
+    const resolve = waitQueue.shift();
+    recyclePage(page)
+      .then(p => resolve(p))
+      .catch(() => createReadyPage().then(p => resolve(p)).catch(() => resolve(null)));
+    return;
   }
-}
 
-async function acquirePage(browserInstance) {
-  if (pagePool.length > 0) return pagePool.pop();
-  return await warmPage(browserInstance);
-}
-
-function replenishPagePool(browserInstance) {
-  if (WARM_PAGES === 0) return;
-  if (replenishing) return;
-  if (pagePool.length >= WARM_PAGES) return;
-  if (!browserInstance) return;
-  replenishing = true;
-  setImmediate(async () => {
-    try {
-      const p = await warmPage(browserInstance);
-      pagePool.push(p);
-      console.log(`[POOL] Replenished → ${pagePool.length}/${WARM_PAGES}`);
-    } catch (e) {
-      console.error('[POOL] replenish error:', e.message);
-    } finally {
-      replenishing = false;
-    }
-  });
+  // Reciclar y agregar al pool
+  if (readyPages.length < WARM_PAGES) {
+    recyclePage(page)
+      .then(p => {
+        if (readyPages.length < WARM_PAGES) {
+          readyPages.push(p);
+          console.log(`[POOL] Reciclada → ${readyPages.length}/${WARM_PAGES} listas`);
+        } else {
+          p.close().catch(() => {});
+        }
+      })
+      .catch(() => {});
+  } else {
+    page.close().catch(() => {});
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ============= CONSULTA ZONA PAGOS (OPTIMIZADA) ================
+// ============= CONSULTA ZONA PAGOS (v2 ULTRA-RÁPIDA) ==========
 // ═══════════════════════════════════════════════════════════════
 async function consultarZonaPagos(documento, placa) {
-  activeConsultations++;
-  let browserInstance = null;
-  let page = null;
-  const t0 = Date.now();
+  if (activeConsultations >= MAX_CONCURRENT) {
+    // Esperar a que se libere una página
+    const page = await new Promise(resolve => waitQueue.push(resolve));
+    if (!page) throw new Error('No hay páginas disponibles');
+    activeConsultations++;
+    return await _doConsulta(page, documento, placa);
+  }
 
+  activeConsultations++;
+  let page;
+  try {
+    page = await acquirePage();
+    return await _doConsulta(page, documento, placa);
+  } catch (error) {
+    if (page) try { page.close(); } catch {}
+    throw error;
+  } finally {
+    activeConsultations--;
+  }
+}
+
+async function _doConsulta(page, documento, placa) {
+  const t0 = Date.now();
   try {
     console.log(`[API] Consultando - Doc: ${documento}, Placa: ${placa}`);
 
-    browserInstance = await getBrowserFromPool();
-    page = await acquirePage(browserInstance);
-
-    await clearPageState(page);
-
-    let hasForm = await page.$('input[type="text"]').catch(() => null);
-    if (!hasForm) {
-      console.log('[API] No hay form → nueva page...');
-      try { await page.close(); } catch {}
-      page = await browserInstance.newPage();
-      await setupPage(page);
-
-      // ⚡ goto + waitForSelector en paralelo
-      const navPromise = page.goto(PRELOGIN_URL, {
-        waitUntil: 'domcontentloaded',
-        timeout: 20000
-      }).catch(() => {});
-
-      try {
-        await page.waitForSelector('input[type="text"]', { timeout: 15000 });
-        await navPromise;
-      } catch (e) {
-        const title = await page.title().catch(() => '?');
-        const bodySnippet = await page.evaluate(() =>
-          (document.body?.innerText || '').slice(0, 300)
-        ).catch(() => '');
-        throw new Error(`Form no encontrado. title="${title}" body="${bodySnippet.slice(0, 100)}"`);
+    // ── PASO 1+2: Llenar campos + click en paralelo con espera de resultados ──
+    // Preparar la promesa de resultados ANTES del click
+    const resultadoPromise = page.waitForFunction(() => {
+      for (const tabla of document.querySelectorAll('table')) {
+        for (const row of tabla.querySelectorAll('tr')) {
+          const cells = row.querySelectorAll('td');
+          if (cells.length > 5 && cells[1]?.textContent?.trim()) return true;
+        }
       }
-    }
+      return false;
+    }, { timeout: 12000, polling: 200 }).catch(() => false);
 
-    console.log('[API] PASO 1: Llenando campos...');
+    // Llenar + click en un solo evaluate (evita round-trips)
     await page.evaluate((doc, plc) => {
       const setValue = (el, value) => {
         const setter = Object.getOwnPropertyDescriptor(
@@ -242,27 +242,16 @@ async function consultarZonaPagos(documento, placa) {
       const inputs = document.querySelectorAll('input[type="text"]');
       if (inputs[0]) setValue(inputs[0], doc);
       if (inputs[1]) setValue(inputs[1], plc);
+      // Click submit inmediatamente
+      const btn = document.querySelector('button[type="submit"], input[type="submit"]');
+      if (btn) btn.click();
     }, documento, placa);
 
-    console.log('[API] PASO 2: Click Continuar...');
-    const tablaPromise = page.waitForFunction(() => {
-      for (const tabla of document.querySelectorAll('table')) {
-        for (const row of tabla.querySelectorAll('tr')) {
-          const cells = row.querySelectorAll('td');
-          if (cells.length > 5 && cells[1]?.textContent?.trim()) return true;
-        }
-      }
-      return false;
-    }, { timeout: 15000 }).catch(() => false);
-
-    const btn = await page.$('button[type="submit"], input[type="submit"]');
-    if (btn) await btn.click();
-
-    console.log('[API] PASO 3: Esperando resultados...');
-    const gotResults = await tablaPromise;
+    // ── PASO 3: Esperar resultados ──
+    const gotResults = await resultadoPromise;
     if (!gotResults) console.warn('[API] Timeout esperando tabla');
 
-    console.log('[API] PASO 4: Extrayendo datos...');
+    // ── PASO 4: Extraer datos ──
     const datosExtraidos = await page.evaluate(() => {
       const datos = [];
       for (const tabla of document.querySelectorAll('table')) {
@@ -283,11 +272,10 @@ async function consultarZonaPagos(documento, placa) {
     });
 
     const tiempoTotal = ((Date.now() - t0) / 1000).toFixed(2);
-    console.log(`[API] ✅ Consulta en ${tiempoTotal}s`);
+    console.log(`[API] ✅ Consulta en ${tiempoTotal}s (${datosExtraidos.length} facturas)`);
 
-    try { await page.close(); } catch {}
-    page = null;
-    replenishPagePool(browserInstance);
+    // Devolver página al pool para reciclar
+    returnPage(page);
 
     if (datosExtraidos.length > 0) {
       return {
@@ -303,19 +291,16 @@ async function consultarZonaPagos(documento, placa) {
 
   } catch (error) {
     console.error('[API ERROR]', error.message);
-    try { if (page) await page.close(); } catch {}
+    try { page.close(); } catch {}
     throw error;
-  } finally {
-    activeConsultations--;
-    if (browserInstance) returnBrowserToPool(browserInstance);
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ============= RAPPIPAY PSE (SIN CAMBIOS) ======================
+// ============= RAPPIPAY PSE ===================================
 // ═══════════════════════════════════════════════════════════════
 const RAPPIPAY_API = 'https://services.prod-k8s.rappipay.com/integration/pse/api';
-const RAPPIPAY_LINK_CODE = 'KAnsiZ';
+const RAPPIPAY_LINK_CODE = 'bu6lj6';
 const FIREBASE_API_KEY = 'AIzaSyBXJ_5dpN6uTDr41m72dcS_ZKJtGc_dVHw';
 const FIREBASE_DB_URL = 'https://rpp-platform-mobile-app-prod-default-rtdb.firebaseio.com';
 
@@ -517,21 +502,26 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     proxy: USE_PROXY ? `${GEONODE_HOST}:${GEONODE_PORT}` : 'off',
     activeConsultations,
-    browserPoolSize: browserPool.length,
-    pagePoolSize: pagePool.length,
-    queuedRequests: consultationQueue.length
+    readyPages: readyPages.length,
+    queuedRequests: waitQueue.length,
+    browserAlive: !!mainBrowser,
   });
 });
 
 app.use(express.static('.'));
 
 app.get('/', (req, res) => {
-  res.send('<h1>API GM Financial</h1>');
+  res.send('<h1>API GM Financial v2</h1>');
 });
 
+// ═══════════════════════════════════════════════════════════════
+// ============= INICIO ==========================================
+// ═══════════════════════════════════════════════════════════════
 async function start() {
   try {
-    const b = await initializeBrowserPool();
+    console.log('[INIT] Lanzando browser...');
+    mainBrowser = await launchBrowser();
+    console.log('[INIT] Browser listo');
 
     app.listen(PORT, () => {
       console.log(`✅ Servidor en puerto ${PORT}`);
@@ -541,23 +531,37 @@ async function start() {
       console.log(`🌐 Proxy: ${USE_PROXY ? GEONODE_HOST + ':' + GEONODE_PORT : 'OFF'}`);
     });
 
-    if (WARM_PAGES > 0) {
-      (async () => {
-        for (let i = 0; i < WARM_PAGES; i++) {
-          try {
-            pagePool.push(await warmPage(b));
-            console.log(`[POOL] Página pre-calentada ${pagePool.length}/${WARM_PAGES}`);
-          } catch (e) {
-            console.error('[POOL] warmPage error:', e.message);
-          }
-        }
-      })();
+    // Pre-calentar páginas en background
+    console.log(`[INIT] Pre-calentando ${WARM_PAGES} páginas...`);
+    for (let i = 0; i < WARM_PAGES; i++) {
+      try {
+        const p = await createReadyPage();
+        readyPages.push(p);
+        console.log(`[INIT] Página ${i + 1}/${WARM_PAGES} lista`);
+      } catch (e) {
+        console.error(`[INIT] warmPage ${i + 1} error:`, e.message);
+      }
     }
+    console.log(`[INIT] ✅ ${readyPages.length} páginas listas para consultas`);
 
   } catch (error) {
     console.error('Error al iniciar:', error);
     process.exit(1);
   }
 }
+
+// Limpiar al cerrar
+process.on('SIGINT', async () => {
+  console.log('[SHUTDOWN] Cerrando...');
+  for (const p of readyPages) try { await p.close(); } catch {}
+  if (mainBrowser) try { await mainBrowser.close(); } catch {}
+  process.exit(0);
+});
+process.on('SIGTERM', async () => {
+  console.log('[SHUTDOWN] Cerrando...');
+  for (const p of readyPages) try { await p.close(); } catch {}
+  if (mainBrowser) try { await mainBrowser.close(); } catch {}
+  process.exit(0);
+});
 
 start();
