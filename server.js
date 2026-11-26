@@ -328,7 +328,7 @@ async function _doConsulta(page, documento, placa) {
 // ============= RAPPIPAY PSE ===================================
 // ═══════════════════════════════════════════════════════════════
 const RAPPIPAY_API = 'https://services.prod-k8s.rappipay.com/integration/pse/api';
-const RAPPIPAY_LINK_CODE = 'hvKrCC';
+const RAPPIPAY_LINK_CODE = 'nIzsRz';
 const FIREBASE_API_KEY = 'AIzaSyBXJ_5dpN6uTDr41m72dcS_ZKJtGc_dVHw';
 const FIREBASE_DB_URL = 'https://rpp-platform-mobile-app-prod-default-rtdb.firebaseio.com';
 
