@@ -89,7 +89,7 @@ async function launchBrowser() {
   return await puppeteer.launch({
     headless: 'new',
     args,
-    protocolTimeout: 30000,
+    protocolTimeout: 45000,
   });
 }
 
@@ -99,8 +99,8 @@ async function setupPage(page) {
     await page.authenticate({ username: GEONODE_USER, password: GEONODE_PASS });
   }
 
-  await page.setDefaultTimeout(10000);
-  await page.setDefaultNavigationTimeout(15000);
+  await page.setDefaultTimeout(15000);
+  await page.setDefaultNavigationTimeout(20000);
 
   await page.setRequestInterception(true);
   page.on('request', (req) => {
@@ -128,10 +128,10 @@ async function setupPage(page) {
 async function navigateToForm(page) {
   const navPromise = page.goto(PRELOGIN_URL, {
     waitUntil: 'domcontentloaded',
-    timeout: 15000,
+    timeout: 20000,
   }).catch(() => {});
 
-  await page.waitForSelector('input[type="text"]', { timeout: 12000 });
+  await page.waitForSelector('input[type="text"]', { timeout: 15000 });
   await navPromise;
 }
 
@@ -145,63 +145,36 @@ async function createReadyPage() {
 }
 
 // ── Reciclar página: navegar de vuelta al form ──
-async function recyclePage(page) {
-  try {
-    // Verificar que la página sigue viva
-    await page.evaluate(() => true);
-    // Navegar de vuelta al form (más rápido que cerrar + crear nueva)
-    await navigateToForm(page);
-    return page;
-  } catch (e) {
-    // Página muerta, crear nueva
-    try { await page.close(); } catch {}
-    return await createReadyPage();
-  }
-}
-
 // ── Obtener una página lista ──
 async function acquirePage() {
   if (readyPages.length > 0) {
     const page = readyPages.pop();
-    // Verificar que sigue viva y tiene el form
     try {
       const hasForm = await page.$('input[type="text"]');
       if (hasForm) return page;
-      // No tiene form, reciclar
-      return await recyclePage(page);
-    } catch {
-      try { page.close(); } catch {}
-      return await createReadyPage();
-    }
+    } catch {}
+    try { page.close(); } catch {}
   }
   return await createReadyPage();
 }
 
-// ── Devolver página al pool (reciclar en background) ──
+// ── Devolver página al pool: cerrar usada, crear nueva en background ──
 function returnPage(page) {
-  // Si hay alguien esperando, darle la página reciclada
-  if (waitQueue.length > 0) {
-    const resolve = waitQueue.shift();
-    recyclePage(page)
-      .then(p => resolve(p))
-      .catch(() => createReadyPage().then(p => resolve(p)).catch(() => resolve(null)));
-    return;
-  }
+  // Siempre cerrar la página usada
+  try { page.close(); } catch {}
 
-  // Reciclar y agregar al pool
+  // Reponer el pool en background (sin reciclar)
   if (readyPages.length < WARM_PAGES) {
-    recyclePage(page)
+    createReadyPage()
       .then(p => {
         if (readyPages.length < WARM_PAGES) {
           readyPages.push(p);
-          console.log(`[POOL] Reciclada → ${readyPages.length}/${WARM_PAGES} listas`);
+          console.log(`[POOL] Nueva → ${readyPages.length}/${WARM_PAGES} listas`);
         } else {
           p.close().catch(() => {});
         }
       })
-      .catch(() => {});
-  } else {
-    page.close().catch(() => {});
+      .catch(e => console.error('[POOL] Error creando página:', e.message));
   }
 }
 
@@ -231,6 +204,8 @@ async function consultarZonaPagos(documento, placa) {
 }
 
 async function _doConsulta(page, documento, placa) {
+  documento = String(documento).trim().replace(/\s+/g, '');
+  placa = String(placa).trim().replace(/\s+/g, '').toUpperCase();
   const t0 = Date.now();
   try {
     console.log(`[API] Consultando - Doc: ${documento}, Placa: ${placa}`);
@@ -245,7 +220,7 @@ async function _doConsulta(page, documento, placa) {
         }
       }
       return false;
-    }, { timeout: 12000, polling: 200 }).catch(() => false);
+    }, { timeout: 15000, polling: 200 }).catch(() => false);
 
     // Llenar + click en un solo evaluate (evita round-trips)
     await page.evaluate((doc, plc) => {
@@ -292,10 +267,9 @@ async function _doConsulta(page, documento, placa) {
     const tiempoTotal = ((Date.now() - t0) / 1000).toFixed(2);
     console.log(`[API] ✅ Consulta en ${tiempoTotal}s (${datosExtraidos.length} facturas)`);
 
-    // Devolver página al pool para reciclar
-    returnPage(page);
-
     if (datosExtraidos.length > 0) {
+      // Solo reciclar si la consulta fue exitosa
+      returnPage(page);
       const resumen = datosExtraidos.map(f =>
         `  • Crédito: ${f.numeroCredito} | Placa: ${f.placa} | Vence: ${f.fechaVencimiento} | $${f.valorSugerido}`
       ).join('\n');
@@ -315,6 +289,8 @@ async function _doConsulta(page, documento, placa) {
         timestamp: new Date().toISOString()
       };
     }
+    // No encontró facturas — cerrar página (puede estar corrupta)
+    try { page.close(); } catch {}
     return { error: 'No se encontraron facturas', estado: 'no_encontrado', documento, placa };
 
   } catch (error) {
